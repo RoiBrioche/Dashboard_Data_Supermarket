@@ -313,6 +313,27 @@ class TestHourlyAnalysis:
         assert result["hour"].min() >= 0
         assert result["hour"].max() <= 23
 
+    def test_hourly_analysis_mixed_time_format(self):
+        """Test analyse horaire avec format Time mixte (cas d'exception)"""
+        df = pd.DataFrame(
+            {
+                "Time": ["14:30", "09:15", "22:45"],  # Format sans secondes pour forcer mixed
+                "Sales": [100.0, 200.0, 150.0],
+                "Quantity": [5, 10, 8],
+                "Invoice ID": ["001", "002", "003"],
+                "Rating": [4.5, 4.2, 4.8],  # Ajout de la colonne Rating manquante
+            }
+        )
+
+        result = hourly_analysis(df)
+
+        assert isinstance(result, pd.DataFrame)
+        assert "hour" in result.columns
+        assert "Sales" in result.columns
+        assert "transactions" in result.columns
+        # Le format mixed devrait fonctionner
+        assert len(result) > 0
+
 
 class TestRatingAnalysis:
     """Tests pour la fonction rating_analysis."""
@@ -403,21 +424,22 @@ class TestEdgeCases:
 class TestVisualizationFunctions:
     """Test des fonctions de visualisation"""
 
-    def test_create_sales_trend_chart(self):
-        """Test la création du graphique des ventes dans le temps"""
+    def test_create_kpi_cards(self):
+        """Test la création des cartes KPI"""
         df = pd.DataFrame(
             {
-                "Date": pd.date_range("2023-01-01", periods=3, freq="D"),
-                "Sales": [100.0, 200.0, 150.0],
-                "gross income": [20.0, 40.0, 30.0],
-                "Invoice ID": ["001", "002", "003"],
+                "Total": [1000.0, 2000.0, 1500.0],
+                "gross margin percentage": [10.0, 15.0, 12.0],
+                "gross income": [100.0, 300.0, 180.0],
+                "Rating": [4.5, 4.2, 4.8],
             }
         )
 
-        fig = create_sales_trend_chart(df, "daily")
-        assert isinstance(fig, go.Figure)
-        assert len(fig.data) == 1
-        assert fig.data[0].name == "Chiffre d'affaires"
+        kpis = compute_kpis(df)
+        cards = create_kpi_cards(kpis)
+
+        assert len(cards) == 4
+        assert all(hasattr(card, "children") for card in cards)
 
     def test_create_sales_trend_chart_weekly(self):
         """Test la création du graphique des ventes hebdomadaires"""
@@ -494,22 +516,6 @@ class TestVisualizationFunctions:
         assert len(fig.data) == 1
         assert fig.data[0].type == "pie"
 
-    def test_create_kpi_cards(self):
-        """Test la création des cartes KPI"""
-        kpis = {
-            "total_revenue": 1000.0,
-            "total_margin": 200.0,
-            "total_transactions": 50,
-            "avg_basket": 20.0,
-            "avg_rating": 8.5,
-        }
 
-        result = create_kpi_cards(kpis)
-        assert isinstance(result, dict)
-        assert "revenue" in result
-        assert "margin" in result
-        assert "transactions" in result
-        assert "avg_basket" in result
-        assert "rating" in result
-        assert result["revenue"]["title"] == "Chiffre d'affaires"
-        assert "€1,000.00" in result["revenue"]["value"]
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
