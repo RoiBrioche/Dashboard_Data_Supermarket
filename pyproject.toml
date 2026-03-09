@@ -29,6 +29,7 @@ ignore = [
     "E203",  # whitespace before ':'
     "UP006", # Use dict instead of Dict for type annotation
     "UP007", # Use X | Y syntax for unions
+    "SIM117", # Use a single `with` statement with multiple contexts
 ]
 
 [tool.ruff.format]
@@ -37,7 +38,7 @@ indent-style = "space"
 line-ending = "auto"
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false
