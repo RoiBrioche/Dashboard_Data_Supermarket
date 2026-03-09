@@ -3,69 +3,60 @@ Module d'analyse des données pour le dashboard E.Leclerc
 Fonctions de calcul des KPI et analyses business
 """
 
+from typing import Any
+
 import pandas as pd
-import numpy as np
-from datetime import datetime, timedelta
-from typing import Dict, List, Tuple, Optional, Any
 import plotly.graph_objects as go
-import plotly.express as px
-from plotly.subplots import make_subplots
 
 # Import des couleurs E.Leclerc
 try:
-    from ..assets.colors import (
-        LECLERC_ORANGE, LECLERC_BLUE, LECLERC_WHITE,
-        COLOR_PATTERNS, PLOTLY_LAYOUT_CONFIG
-    )
+    from ..assets.colors import COLOR_PATTERNS, LECLERC_BLUE, LECLERC_ORANGE, PLOTLY_LAYOUT_CONFIG
 except ImportError:
     # Fallback pour les tests ou imports directs
-    from assets.colors import (
-        LECLERC_ORANGE, LECLERC_BLUE, LECLERC_WHITE,
-        COLOR_PATTERNS, PLOTLY_LAYOUT_CONFIG
-    )
+    from assets.colors import COLOR_PATTERNS, LECLERC_BLUE, LECLERC_ORANGE, PLOTLY_LAYOUT_CONFIG
 
 
 def load_data(file_path: str) -> pd.DataFrame:
     """
     Charge les données depuis le fichier CSV
-    
+
     Args:
         file_path: Chemin vers le fichier CSV
-        
+
     Returns:
         DataFrame pandas avec les données nettoyées
     """
     try:
         df = pd.read_csv(file_path)
-        
+
         # Conversion des types
-        df['Date'] = pd.to_datetime(df['Date'], format='%m/%d/%Y')
-        df['Time'] = pd.to_datetime(df['Time'], format='%I:%M:%S %p').dt.time
-        
+        df["Date"] = pd.to_datetime(df["Date"], format="%m/%d/%Y")
+        df["Time"] = pd.to_datetime(df["Time"], format="%I:%M:%S %p").dt.time
+
         # Nettoyage des colonnes numériques
-        numeric_columns = ['Unit price', 'Quantity', 'Tax 5%', 'Sales', 'cogs', 'gross income', 'Rating']
+        numeric_columns = ["Unit price", "Quantity", "Tax 5%", "Sales", "cogs", "gross income", "Rating"]
         for col in numeric_columns:
-            df[col] = pd.to_numeric(df[col], errors='coerce')
-        
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
         # Création de colonnes dérivées
-        df['Year'] = df['Date'].dt.year
-        df['Month'] = df['Date'].dt.month
-        df['Day'] = df['Date'].dt.day
-        df['DayOfWeek'] = df['Date'].dt.day_name()
-        
+        df["Year"] = df["Date"].dt.year
+        df["Month"] = df["Date"].dt.month
+        df["Day"] = df["Date"].dt.day
+        df["DayOfWeek"] = df["Date"].dt.day_name()
+
         return df
-        
+
     except Exception as e:
         raise ValueError(f"Erreur lors du chargement des données: {e}") from e
 
 
-def compute_kpis(df: pd.DataFrame) -> Dict[str, Any]:
+def compute_kpis(df: pd.DataFrame) -> dict[str, Any]:
     """
     Calcule les KPIs principaux du dashboard
-    
+
     Args:
         df: DataFrame des transactions
-        
+
     Returns:
         Dictionnaire avec tous les KPIs calculés
     """
@@ -80,19 +71,19 @@ def compute_kpis(df: pd.DataFrame) -> Dict[str, Any]:
             "member_customers": 0,
             "normal_customers": 0,
         }
-    
+
     # KPIs principaux
     total_revenue = df["Sales"].sum()
     total_margin = df["gross income"].sum()
     total_transactions = len(df)
     avg_basket = total_revenue / total_transactions if total_transactions > 0 else 0
     avg_rating = df["Rating"].mean()
-    
+
     # KPIs clients
     total_customers = df["Customer type"].value_counts().sum()
     member_customers = df[df["Customer type"] == "Member"]["Customer type"].count()
     normal_customers = df[df["Customer type"] == "Normal"]["Customer type"].count()
-    
+
     return {
         "total_revenue": round(total_revenue, 2),
         "total_margin": round(total_margin, 2),
@@ -108,10 +99,10 @@ def compute_kpis(df: pd.DataFrame) -> Dict[str, Any]:
 def sales_by_category(df: pd.DataFrame) -> pd.DataFrame:
     """
     Calcule les ventes par catégorie de produits
-    
+
     Args:
         df: DataFrame des transactions
-        
+
     Returns:
         DataFrame avec ventes par catégorie
     """
@@ -121,7 +112,7 @@ def sales_by_category(df: pd.DataFrame) -> pd.DataFrame:
         .rename(columns={"Invoice ID": "transactions", "gross income": "margin"})
         .round(2)
     )
-    
+
     category_sales = category_sales.sort_values("Sales", ascending=False)
     return category_sales
 
@@ -129,19 +120,19 @@ def sales_by_category(df: pd.DataFrame) -> pd.DataFrame:
 def sales_over_time(df: pd.DataFrame, period: str = "daily") -> pd.DataFrame:
     """
     Calcule l'évolution des ventes dans le temps
-    
+
     Args:
         df: DataFrame des transactions
         period: 'daily', 'weekly', 'monthly'
-        
+
     Returns:
         DataFrame avec ventes par période
     """
     df_copy = df.copy()
-    
+
     # Convertir en datetime pour éviter les problèmes d'accès .dt
     df_copy["Date"] = pd.to_datetime(df_copy["Date"])
-    
+
     if period == "daily":
         df_copy["period"] = df_copy["Date"].dt.date
     elif period == "weekly":
@@ -150,24 +141,24 @@ def sales_over_time(df: pd.DataFrame, period: str = "daily") -> pd.DataFrame:
         df_copy["period"] = df_copy["Date"].dt.to_period("M").dt.start_time
     else:
         raise ValueError("Period must be 'daily', 'weekly', or 'monthly'")
-    
+
     time_sales = (
         df_copy.groupby("period")
         .agg({"Sales": "sum", "gross income": "sum", "Invoice ID": "count"})
         .rename(columns={"Invoice ID": "transactions", "gross income": "margin"})
         .round(2)
     )
-    
+
     return time_sales.reset_index()
 
 
 def profit_by_category(df: pd.DataFrame) -> pd.DataFrame:
     """
     Calcule la marge par catégorie
-    
+
     Args:
         df: DataFrame des transactions
-        
+
     Returns:
         DataFrame avec marges par catégorie
     """
@@ -182,10 +173,10 @@ def profit_by_category(df: pd.DataFrame) -> pd.DataFrame:
 def payment_distribution(df: pd.DataFrame) -> pd.DataFrame:
     """
     Calcule la répartition des modes de paiement
-    
+
     Args:
         df: DataFrame des transactions
-        
+
     Returns:
         DataFrame avec distribution des paiements
     """
@@ -198,12 +189,12 @@ def payment_distribution(df: pd.DataFrame) -> pd.DataFrame:
 def top_products(df: pd.DataFrame, n: int = 10, metric: str = "sales") -> pd.DataFrame:
     """
     Identifie les top produits par métrique
-    
+
     Args:
         df: DataFrame des transactions
         n: Nombre de produits à retourner
         metric: 'sales', 'margin', 'quantity'
-        
+
     Returns:
         DataFrame avec top produits
     """
@@ -223,13 +214,13 @@ def top_products(df: pd.DataFrame, n: int = 10, metric: str = "sales") -> pd.Dat
     return top_products.reset_index()
 
 
-def customer_analysis(df: pd.DataFrame) -> Dict[str, Any]:
+def customer_analysis(df: pd.DataFrame) -> dict[str, Any]:
     """
     Analyse détaillée des clients
-    
+
     Args:
         df: DataFrame des transactions
-        
+
     Returns:
         Dictionnaire avec analyses clients
     """
@@ -258,10 +249,10 @@ def customer_analysis(df: pd.DataFrame) -> Dict[str, Any]:
 def geographic_analysis(df: pd.DataFrame) -> pd.DataFrame:
     """
     Analyse des ventes par localisation géographique
-    
+
     Args:
         df: DataFrame des transactions
-        
+
     Returns:
         DataFrame avec analyses géographiques
     """
@@ -280,10 +271,10 @@ def geographic_analysis(df: pd.DataFrame) -> pd.DataFrame:
 def hourly_analysis(df: pd.DataFrame) -> pd.DataFrame:
     """
     Analyse des ventes par heure de la journée
-    
+
     Args:
         df: DataFrame des transactions
-        
+
     Returns:
         DataFrame avec ventes par heure
     """
@@ -301,13 +292,13 @@ def hourly_analysis(df: pd.DataFrame) -> pd.DataFrame:
     return hourly_sales.reset_index()
 
 
-def rating_analysis(df: pd.DataFrame) -> Dict[str, Any]:
+def rating_analysis(df: pd.DataFrame) -> dict[str, Any]:
     """
     Analyse détaillée des ratings de satisfaction
-    
+
     Args:
         df: DataFrame des transactions
-        
+
     Returns:
         Dictionnaire avec analyses de rating
     """
@@ -330,14 +321,15 @@ def rating_analysis(df: pd.DataFrame) -> Dict[str, Any]:
 
 # Fonctions de visualisation
 
+
 def create_sales_trend_chart(df: pd.DataFrame, period: str = "daily") -> go.Figure:
     """
     Crée le graphique d'évolution des ventes
-    
+
     Args:
         df: DataFrame des transactions
         period: 'daily', 'weekly', 'monthly'
-        
+
     Returns:
         Figure Plotly
     """
@@ -370,10 +362,10 @@ def create_sales_trend_chart(df: pd.DataFrame, period: str = "daily") -> go.Figu
 def create_category_sales_chart(df: pd.DataFrame) -> go.Figure:
     """
     Crée le graphique des ventes par catégorie
-    
+
     Args:
         df: DataFrame des transactions
-        
+
     Returns:
         Figure Plotly
     """
@@ -405,10 +397,10 @@ def create_category_sales_chart(df: pd.DataFrame) -> go.Figure:
 def create_payment_pie_chart(df: pd.DataFrame) -> go.Figure:
     """
     Crée le graphique camembert des modes de paiement
-    
+
     Args:
         df: DataFrame des transactions
-        
+
     Returns:
         Figure Plotly
     """
@@ -433,10 +425,10 @@ def create_payment_pie_chart(df: pd.DataFrame) -> go.Figure:
 def create_kpi_cards(kpis: dict[str, Any]) -> dict[str, dict]:
     """
     Crée les données pour les cartes KPI
-    
+
     Args:
         kpis: Dictionnaire des KPIs
-        
+
     Returns:
         Dictionnaire formaté pour l'affichage
     """
