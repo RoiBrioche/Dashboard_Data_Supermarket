@@ -1,5 +1,5 @@
 """
-Module d'analyse des données pour le dashboard E.Leclerc
+Module d'analyse des données pour le dashboard E.Leclerc (version simplifiée pour les tests)
 Fonctions de calcul des KPI et analyses business
 """
 
@@ -11,18 +11,29 @@ import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
 
-# Import des couleurs E.Leclerc
-try:
-    from ..assets.colors import (
-        LECLERC_ORANGE, LECLERC_BLUE, LECLERC_WHITE,
-        COLOR_PATTERNS, PLOTLY_LAYOUT_CONFIG
-    )
-except ImportError:
-    # Fallback pour les tests ou imports directs
-    from assets.colors import (
-        LECLERC_ORANGE, LECLERC_BLUE, LECLERC_WHITE,
-        COLOR_PATTERNS, PLOTLY_LAYOUT_CONFIG
-    )
+# Couleurs E.Leclerc (définies localement pour éviter les imports relatifs)
+LECLERC_ORANGE = "#ee8c11"
+LECLERC_BLUE = "#0471b6"
+LECLERC_WHITE = "#ffffff"
+COLOR_PATTERNS = {
+    "primary": [LECLERC_BLUE, LECLERC_ORANGE],
+    "sequential": ["#023e8a", "#0077b6", "#0096c7", "#00b4d8", "#48cae4"],
+    "diverging": ["#0471b6", "#48cae4", "#ffffff", "#ffb700", "#ee8c11"],
+    "categorical": [
+        LECLERC_BLUE, LECLERC_ORANGE, "#48cae4", "#ffb700", 
+        "#90e0ef", "#ffd60a", "#00b4d8", "#ffaa00"
+    ]
+}
+PLOTLY_LAYOUT_CONFIG = {
+    "font": {"family": "Arial, sans-serif"},
+    "title_font": {"size": 20, "color": "#333333"},
+    "showlegend": True,
+    "legend": {
+        "bgcolor": "rgba(255,255,255,0.8)",
+        "bordercolor": "#e0e0e0",
+        "borderwidth": 1
+    }
+}
 
 
 def load_data(file_path: str) -> pd.DataFrame:
@@ -139,9 +150,6 @@ def sales_over_time(df: pd.DataFrame, period: str = "daily") -> pd.DataFrame:
     """
     df_copy = df.copy()
     
-    # Convertir en datetime pour éviter les problèmes d'accès .dt
-    df_copy["Date"] = pd.to_datetime(df_copy["Date"])
-    
     if period == "daily":
         df_copy["period"] = df_copy["Date"].dt.date
     elif period == "weekly":
@@ -151,6 +159,8 @@ def sales_over_time(df: pd.DataFrame, period: str = "daily") -> pd.DataFrame:
     else:
         raise ValueError("Period must be 'daily', 'weekly', or 'monthly'")
     
+    # Convertir en datetime pour éviter les problèmes d'accès .dt
+    df_copy["Date"] = pd.to_datetime(df_copy["Date"])
     time_sales = (
         df_copy.groupby("period")
         .agg({"Sales": "sum", "gross income": "sum", "Invoice ID": "count"})
@@ -351,8 +361,8 @@ def create_sales_trend_chart(df: pd.DataFrame, period: str = "daily") -> go.Figu
             y=time_data["Sales"],
             mode="lines+markers",
             name="Chiffre d'affaires",
-            line={"color": LECLERC_BLUE, "width": 3},
-            marker={"size": 6},
+            line=dict(color=LECLERC_BLUE, width=3),
+            marker=dict(size=6),
         )
     )
 
@@ -384,7 +394,7 @@ def create_category_sales_chart(df: pd.DataFrame) -> go.Figure:
             go.Bar(
                 x=category_data.index,
                 y=category_data["Sales"],
-                marker={"color": COLOR_PATTERNS["primary"] * (len(category_data) // 2 + 1)},
+                marker=dict(color=COLOR_PATTERNS["primary"] * (len(category_data) // 2 + 1)),
                 text=category_data["Sales"].round(2),
                 textposition="auto",
             )
