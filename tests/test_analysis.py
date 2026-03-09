@@ -7,6 +7,7 @@ import os
 import sys
 
 import pandas as pd
+import plotly.graph_objects as go
 import pytest
 
 # Ajouter le chemin src pour les imports
@@ -14,6 +15,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from app.analysis import (
     compute_kpis,
+    create_category_sales_chart,
+    create_kpi_cards,
+    create_payment_pie_chart,
+    create_sales_trend_chart,
     customer_analysis,
     geographic_analysis,
     hourly_analysis,
@@ -393,3 +398,118 @@ class TestEdgeCases:
         result = sales_by_category(df_negative)
         assert isinstance(result, pd.DataFrame)
         # Les calculs doivent fonctionner même avec des valeurs négatives
+
+
+class TestVisualizationFunctions:
+    """Test des fonctions de visualisation"""
+
+    def test_create_sales_trend_chart(self):
+        """Test la création du graphique des ventes dans le temps"""
+        df = pd.DataFrame(
+            {
+                "Date": pd.date_range("2023-01-01", periods=3, freq="D"),
+                "Sales": [100.0, 200.0, 150.0],
+                "gross income": [20.0, 40.0, 30.0],
+                "Invoice ID": ["001", "002", "003"],
+            }
+        )
+
+        fig = create_sales_trend_chart(df, "daily")
+        assert isinstance(fig, go.Figure)
+        assert len(fig.data) == 1
+        assert fig.data[0].name == "Chiffre d'affaires"
+
+    def test_create_sales_trend_chart_weekly(self):
+        """Test la création du graphique des ventes hebdomadaires"""
+        df = pd.DataFrame(
+            {
+                "Date": pd.date_range("2023-01-01", periods=7, freq="D"),
+                "Sales": [100.0, 200.0, 150.0, 120.0, 180.0, 160.0, 140.0],
+                "gross income": [20.0, 40.0, 30.0, 24.0, 36.0, 32.0, 28.0],
+                "Invoice ID": [f"00{i}" for i in range(1, 8)],
+            }
+        )
+
+        fig = create_sales_trend_chart(df, "weekly")
+        assert isinstance(fig, go.Figure)
+        assert len(fig.data) == 1
+
+    def test_create_sales_trend_chart_invalid_period(self):
+        """Test la gestion des périodes invalides"""
+        df = pd.DataFrame(
+            {
+                "Date": pd.date_range("2023-01-01", periods=3, freq="D"),
+                "Sales": [100.0, 200.0, 150.0],
+                "gross income": [20.0, 40.0, 30.0],
+                "Invoice ID": ["001", "002", "003"],
+            }
+        )
+
+        with pytest.raises(ValueError, match="Period must be 'daily', 'weekly', or 'monthly'"):
+            create_sales_trend_chart(df, "invalid")
+
+    def test_create_sales_trend_chart_monthly(self):
+        """Test la création du graphique des ventes mensuelles"""
+        df = pd.DataFrame(
+            {
+                "Date": pd.date_range("2023-01-01", periods=30, freq="D"),
+                "Sales": [100.0 + i * 10 for i in range(30)],
+                "gross income": [20.0 + i * 2 for i in range(30)],
+                "Invoice ID": [f"{i:03d}" for i in range(1, 31)],
+            }
+        )
+
+        fig = create_sales_trend_chart(df, "monthly")
+        assert isinstance(fig, go.Figure)
+        assert len(fig.data) == 1
+
+    def test_create_category_sales_chart(self):
+        """Test la création du graphique des ventes par catégorie"""
+        df = pd.DataFrame(
+            {
+                "Product line": ["Electronics", "Clothing", "Food"],
+                "Sales": [100.0, 200.0, 150.0],
+                "Quantity": [5, 10, 8],
+                "gross income": [20.0, 40.0, 30.0],
+                "Invoice ID": ["001", "002", "003"],
+            }
+        )
+
+        fig = create_category_sales_chart(df)
+        assert isinstance(fig, go.Figure)
+        assert len(fig.data) == 1
+        assert fig.data[0].type == "bar"
+
+    def test_create_payment_pie_chart(self):
+        """Test la création du graphique camembert des paiements"""
+        df = pd.DataFrame(
+            {
+                "Payment": ["Cash", "Credit card", "Ewallet", "Cash"],
+                "Invoice ID": ["001", "002", "003", "004"],
+            }
+        )
+
+        fig = create_payment_pie_chart(df)
+        assert isinstance(fig, go.Figure)
+        assert len(fig.data) == 1
+        assert fig.data[0].type == "pie"
+
+    def test_create_kpi_cards(self):
+        """Test la création des cartes KPI"""
+        kpis = {
+            "total_revenue": 1000.0,
+            "total_margin": 200.0,
+            "total_transactions": 50,
+            "avg_basket": 20.0,
+            "avg_rating": 8.5,
+        }
+
+        result = create_kpi_cards(kpis)
+        assert isinstance(result, dict)
+        assert "revenue" in result
+        assert "margin" in result
+        assert "transactions" in result
+        assert "avg_basket" in result
+        assert "rating" in result
+        assert result["revenue"]["title"] == "Chiffre d'affaires"
+        assert "€1,000.00" in result["revenue"]["value"]

@@ -410,7 +410,7 @@ def create_payment_pie_chart(df: pd.DataFrame) -> go.Figure:
     fig = go.Figure(
         data=[
             go.Pie(
-                labels=payment_data["payment_method"],
+                labels=payment_data["Payment"],
                 values=payment_data["count"],
                 hole=0.3,
                 marker_colors=COLOR_PATTERNS["categorical"],
