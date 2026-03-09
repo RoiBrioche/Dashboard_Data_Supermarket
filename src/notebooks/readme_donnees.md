@@ -13,7 +13,7 @@ Ce notebook est conçu pour les **néophytes en analyse de données** qui veulen
 
 ### 2. **Calcul des KPIs essentiels**
 - **Chiffre d'affaires** : Somme des ventes
-- **Marge brute** : Sales - COGS 
+- **Marge brute** : Sales - COGS
 - **Panier moyen** : CA / Nombre de transactions
 - **Satisfaction client** : Moyenne des ratings
 

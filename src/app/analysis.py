@@ -9,11 +9,12 @@ import pandas as pd
 import plotly.graph_objects as go
 
 # Import des couleurs E.Leclerc
-try:
-    from ..assets.colors import COLOR_PATTERNS, LECLERC_BLUE, LECLERC_ORANGE, PLOTLY_LAYOUT_CONFIG
-except ImportError:
-    # Fallback pour les tests ou imports directs
-    from assets.colors import COLOR_PATTERNS, LECLERC_BLUE, LECLERC_ORANGE, PLOTLY_LAYOUT_CONFIG
+from assets.colors import (
+    COLOR_PATTERNS,
+    LECLERC_BLUE,
+    LECLERC_ORANGE,
+    PLOTLY_LAYOUT_CONFIG,
+)
 
 
 def load_data(file_path: str) -> pd.DataFrame:

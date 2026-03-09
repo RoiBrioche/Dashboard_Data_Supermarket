@@ -13,7 +13,7 @@ Ce dossier contient tous les éléments visuels pour le dashboard E.Leclerc.
 
 ### Couleurs principales
 - **Orange E.Leclerc** : `#ee8c11`
-- **Bleu E.Leclerc** : `#0471b6` 
+- **Bleu E.Leclerc** : `#0471b6`
 - **Blanc E.Leclerc** : `#ffffff`
 
 ### Couleurs secondaires
