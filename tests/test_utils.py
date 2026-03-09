@@ -33,16 +33,14 @@ class TestDataCleaning:
 
     def test_clean_dataframe_basic(self):
         """Test le nettoyage de base d'un DataFrame"""
-        df = pd.DataFrame({
-            'Invoice ID': ['001', '002', '001', '003'],
-            'Sales': [100.0, 200.0, None, 150.0],
-            'Quantity': [5, 10, 3, 8]
-        })
+        df = pd.DataFrame(
+            {"Invoice ID": ["001", "002", "001", "003"], "Sales": [100.0, 200.0, None, 150.0], "Quantity": [5, 10, 3, 8]}
+        )
 
         result = clean_dataframe(df)
 
         assert len(result) == 3  # Doublon supprimé
-        assert result['Sales'].isnull().sum() == 0  # Valeur nulle remplacée
+        assert result["Sales"].isnull().sum() == 0  # Valeur nulle remplacée
         assert isinstance(result, pd.DataFrame)
 
     def test_clean_dataframe_empty(self):
@@ -56,33 +54,25 @@ class TestDataCleaning:
 
     def test_clean_dataframe_with_missing_values(self):
         """Test le nettoyage avec valeurs manquantes"""
-        df = pd.DataFrame({
-            'Invoice ID': ['001', '002', '003'],
-            'Sales': [100.0, None, 150.0],
-            'Quantity': [5, None, 8]
-        })
+        df = pd.DataFrame({"Invoice ID": ["001", "002", "003"], "Sales": [100.0, None, 150.0], "Quantity": [5, None, 8]})
 
         result = clean_dataframe(df)
 
         assert len(result) == 3
-        assert result['Sales'].isnull().sum() == 0  # Valeur nulle remplacée par 0
-        assert result['Quantity'].isnull().sum() == 0  # Valeur nulle remplacée par 0
-        assert result.loc[1, 'Sales'] == 0.0
-        assert result.loc[1, 'Quantity'] == 0.0
+        assert result["Sales"].isnull().sum() == 0  # Valeur nulle remplacée par 0
+        assert result["Quantity"].isnull().sum() == 0  # Valeur nulle remplacée par 0
+        assert result.loc[1, "Sales"] == 0.0
+        assert result.loc[1, "Quantity"] == 0.0
 
     def test_standardize_column_names(self):
         """Test la standardisation des noms de colonnes"""
-        df = pd.DataFrame({
-            'invoice_id': ['001', '002'],
-            'product_line': ['A', 'B'],
-            'unit_price': [10.0, 20.0]
-        })
+        df = pd.DataFrame({"invoice_id": ["001", "002"], "product_line": ["A", "B"], "unit_price": [10.0, 20.0]})
 
         result = standardize_column_names(df)
 
-        assert 'Invoice Id' in result.columns
-        assert 'Product Line' in result.columns
-        assert 'Unit Price' in result.columns
+        assert "Invoice Id" in result.columns
+        assert "Product Line" in result.columns
+        assert "Unit Price" in result.columns
 
 
 class TestDataValidation:
@@ -90,79 +80,82 @@ class TestDataValidation:
 
     def test_validate_transaction_data_valid(self):
         """Test la validation de données valides"""
-        df = pd.DataFrame({
-            'Invoice ID': ['001', '002'],
-            'Date': ['2023-01-01', '2023-01-02'],
-            'Product line': ['Electronics', 'Clothing'],
-            'Sales': [100.0, 200.0],
-            'Quantity': [5, 10],
-            'Unit price': [20.0, 20.0],
-            'Tax 5%': [5.0, 10.0],
-            'cogs': [80.0, 160.0],
-            'gross income': [20.0, 40.0],
-            'Rating': [8.0, 9.0]
-        })
+        df = pd.DataFrame(
+            {
+                "Invoice ID": ["001", "002"],
+                "Date": ["2023-01-01", "2023-01-02"],
+                "Product line": ["Electronics", "Clothing"],
+                "Sales": [100.0, 200.0],
+                "Quantity": [5, 10],
+                "Unit price": [20.0, 20.0],
+                "Tax 5%": [5.0, 10.0],
+                "cogs": [80.0, 160.0],
+                "gross income": [20.0, 40.0],
+                "Rating": [8.0, 9.0],
+            }
+        )
 
         result = validate_transaction_data(df)
 
-        assert result['is_valid']
-        assert len(result['errors']) == 0
-        assert 'stats' in result
+        assert result["is_valid"]
+        assert len(result["errors"]) == 0
+        assert "stats" in result
 
     def test_validate_transaction_data_missing_columns(self):
         """Test la validation avec colonnes manquantes"""
-        df = pd.DataFrame({
-            'Invoice ID': ['001', '002'],
-            'Sales': [100.0, 200.0]
-        })
+        df = pd.DataFrame({"Invoice ID": ["001", "002"], "Sales": [100.0, 200.0]})
 
         result = validate_transaction_data(df)
 
-        assert not result['is_valid']
-        assert len(result['errors']) > 0
-        assert 'Colonnes manquantes' in str(result['errors'])
+        assert not result["is_valid"]
+        assert len(result["errors"]) > 0
+        assert "Colonnes manquantes" in str(result["errors"])
 
     def test_validate_transaction_data_invalid_types(self):
         """Test la validation avec types de données invalides"""
-        df = pd.DataFrame({
-            'Invoice ID': ['001', '002'],
-            'Date': ['2023-01-01', '2023-01-02'],
-            'Product line': ['Electronics', 'Clothing'],
-            'Sales': [100.0, 200.0],  # Garder en numérique pour éviter l'erreur
-            'Quantity': [5, 10],
-            'Unit price': [20.0, 20.0],
-            'Tax 5%': [5.0, 10.0],
-            'cogs': [80.0, 160.0],
-            'gross income': [20.0, 40.0],
-            'Rating': ['8.0', '9.0']  # String au lieu de numérique
-        })
+        df = pd.DataFrame(
+            {
+                "Invoice ID": ["001", "002"],
+                "Date": ["2023-01-01", "2023-01-02"],
+                "Product line": ["Electronics", "Clothing"],
+                "Sales": [100.0, 200.0],  # Garder en numérique pour éviter l'erreur
+                "Quantity": [5, 10],
+                "Unit price": [20.0, 20.0],
+                "Tax 5%": [5.0, 10.0],
+                "cogs": [80.0, 160.0],
+                "gross income": [20.0, 40.0],
+                "Rating": ["8.0", "9.0"],  # String au lieu de numérique
+            }
+        )
 
         result = validate_transaction_data(df)
 
-        assert result['is_valid']  # Toujours valide mais avec warnings
-        assert len(result['warnings']) > 0
-        assert any('n\'est pas numérique' in warning for warning in result['warnings'])
+        assert result["is_valid"]  # Toujours valide mais avec warnings
+        assert len(result["warnings"]) > 0
+        assert any("n'est pas numérique" in warning for warning in result["warnings"])
 
     def test_validate_transaction_data_negative_values(self):
         """Test la détection de valeurs négatives"""
-        df = pd.DataFrame({
-            'Invoice ID': ['001', '002'],
-            'Date': ['2023-01-01', '2023-01-02'],
-            'Product line': ['Electronics', 'Clothing'],
-            'Sales': [100.0, -50.0],
-            'Quantity': [5, 10],
-            'Unit price': [20.0, 20.0],
-            'Tax 5%': [5.0, 10.0],
-            'cogs': [80.0, 160.0],
-            'gross income': [20.0, 40.0],
-            'Rating': [8.0, 9.0]
-        })
+        df = pd.DataFrame(
+            {
+                "Invoice ID": ["001", "002"],
+                "Date": ["2023-01-01", "2023-01-02"],
+                "Product line": ["Electronics", "Clothing"],
+                "Sales": [100.0, -50.0],
+                "Quantity": [5, 10],
+                "Unit price": [20.0, 20.0],
+                "Tax 5%": [5.0, 10.0],
+                "cogs": [80.0, 160.0],
+                "gross income": [20.0, 40.0],
+                "Rating": [8.0, 9.0],
+            }
+        )
 
         result = validate_transaction_data(df)
 
         # Vérifier que le warning contient le mot clé
-        warnings_text = ' '.join(result['warnings'])
-        assert 'négatives' in warnings_text or 'negatives' in warnings_text
+        warnings_text = " ".join(result["warnings"])
+        assert "négatives" in warnings_text or "negatives" in warnings_text
 
 
 class TestFormattingFunctions:
@@ -239,54 +232,46 @@ class TestDateFeatures:
 
     def test_create_date_features(self):
         """Test la création de caractéristiques temporelles"""
-        df = pd.DataFrame({
-            'Date': pd.to_datetime(['2023-01-15', '2023-06-20']),
-            'Sales': [100.0, 200.0]
-        })
+        df = pd.DataFrame({"Date": pd.to_datetime(["2023-01-15", "2023-06-20"]), "Sales": [100.0, 200.0]})
 
         result = create_date_features(df)
 
-        assert 'Year' in result.columns
-        assert 'Month' in result.columns
-        assert 'Day' in result.columns
-        assert 'DayOfWeek' in result.columns
-        assert 'Quarter' in result.columns
-        assert 'WeekOfYear' in result.columns
-        assert 'IsWeekend' in result.columns
+        assert "Year" in result.columns
+        assert "Month" in result.columns
+        assert "Day" in result.columns
+        assert "DayOfWeek" in result.columns
+        assert "Quarter" in result.columns
+        assert "WeekOfYear" in result.columns
+        assert "IsWeekend" in result.columns
 
-        assert result.loc[0, 'Year'] == 2023
-        assert result.loc[0, 'Month'] == 1
-        assert result.loc[0, 'Day'] == 15
-        assert result.loc[0, 'DayOfWeek'] == 'Sunday'
-        assert result.loc[0, 'Quarter'] == 1
-        assert result.loc[0, 'IsWeekend']
+        assert result.loc[0, "Year"] == 2023
+        assert result.loc[0, "Month"] == 1
+        assert result.loc[0, "Day"] == 15
+        assert result.loc[0, "DayOfWeek"] == "Sunday"
+        assert result.loc[0, "Quarter"] == 1
+        assert result.loc[0, "IsWeekend"]
 
     def test_create_date_features_string_dates(self):
         """Test la création de caractéristiques avec dates en string"""
-        df = pd.DataFrame({
-            'Date': ['2023-01-15', '2023-06-20'],
-            'Sales': [100.0, 200.0]
-        })
+        df = pd.DataFrame({"Date": ["2023-01-15", "2023-06-20"], "Sales": [100.0, 200.0]})
 
         result = create_date_features(df)
 
-        assert 'Year' in result.columns
-        assert 'Month' in result.columns
-        assert 'Day' in result.columns
-        assert 'DayOfWeek' in result.columns
-        assert 'Quarter' in result.columns
-        assert 'WeekOfYear' in result.columns
-        assert 'IsWeekend' in result.columns
+        assert "Year" in result.columns
+        assert "Month" in result.columns
+        assert "Day" in result.columns
+        assert "DayOfWeek" in result.columns
+        assert "Quarter" in result.columns
+        assert "WeekOfYear" in result.columns
+        assert "IsWeekend" in result.columns
 
-        assert result.loc[0, 'Year'] == 2023
-        assert result.loc[0, 'Month'] == 1
-        assert result.loc[0, 'Day'] == 15
+        assert result.loc[0, "Year"] == 2023
+        assert result.loc[0, "Month"] == 1
+        assert result.loc[0, "Day"] == 15
 
     def test_create_date_features_missing_column(self):
         """Test la création de caractéristiques avec colonne manquante"""
-        df = pd.DataFrame({
-            'Sales': [100.0, 200.0]
-        })
+        df = pd.DataFrame({"Sales": [100.0, 200.0]})
 
         result = create_date_features(df)
 
@@ -299,39 +284,41 @@ class TestOutlierDetection:
 
     def test_detect_outliers_iqr(self):
         """Test la détection d'outliers avec la méthode IQR"""
-        df = pd.DataFrame({
-            'values': [10, 12, 12, 13, 12, 11, 14, 13, 15, 100]  # 100 est un outlier
-        })
+        df = pd.DataFrame(
+            {
+                "values": [10, 12, 12, 13, 12, 11, 14, 13, 15, 100]  # 100 est un outlier
+            }
+        )
 
-        result = detect_outliers(df, 'values', method='iqr')
+        result = detect_outliers(df, "values", method="iqr")
 
-        assert 'is_outlier' in result.columns
-        assert result['is_outlier'].sum() >= 1  # Au moins un outlier
+        assert "is_outlier" in result.columns
+        assert result["is_outlier"].sum() >= 1  # Au moins un outlier
         # Vérifier que 100 est bien détecté comme outlier (index 9)
-        assert result.loc[9, 'is_outlier']
+        assert result.loc[9, "is_outlier"]
 
     def test_detect_outliers_zscore(self):
         """Test la détection d'outliers avec la méthode Z-score"""
         # Test avec des données qui devraient produire des outliers
-        df = pd.DataFrame({
-            'values': [1, 2, 3, 4, 5, 1, 2, 3, 4, 100]  # Distribution avec une valeur extrême
-        })
+        df = pd.DataFrame(
+            {
+                "values": [1, 2, 3, 4, 5, 1, 2, 3, 4, 100]  # Distribution avec une valeur extrême
+            }
+        )
 
-        result = detect_outliers(df, 'values', method='zscore')
+        result = detect_outliers(df, "values", method="zscore")
 
-        assert 'is_outlier' in result.columns
+        assert "is_outlier" in result.columns
         # Vérifier que la fonction retourne bien une colonne booléenne
-        assert result['is_outlier'].dtype == bool
+        assert result["is_outlier"].dtype == bool
         # Vérifier qu'il y a au moins une valeur (outlier ou non)
-        assert len(result['is_outlier']) == 10
+        assert len(result["is_outlier"]) == 10
 
     def test_detect_outliers_missing_column(self):
         """Test la détection d'outliers avec colonne manquante"""
-        df = pd.DataFrame({
-            'other': [1, 2, 3]
-        })
+        df = pd.DataFrame({"other": [1, 2, 3]})
 
-        result = detect_outliers(df, 'missing_column')
+        result = detect_outliers(df, "missing_column")
 
         # Devrait retourner le DataFrame original
         assert len(result.columns) == 1
@@ -342,18 +329,15 @@ class TestUtilityFunctions:
 
     def test_get_data_summary(self):
         """Test la génération de résumé statistique"""
-        df = pd.DataFrame({
-            'numeric_col': [10, 20, 30, 40, 50],
-            'text_col': ['A', 'B', 'C', 'D', 'E']
-        })
+        df = pd.DataFrame({"numeric_col": [10, 20, 30, 40, 50], "text_col": ["A", "B", "C", "D", "E"]})
 
         result = get_data_summary(df)
 
-        assert 'shape' in result
-        assert result['shape'] == (5, 2)
-        assert 'columns' in result
-        assert 'numeric_summary' in result
-        assert 'numeric_col' in result['numeric_summary']
+        assert "shape" in result
+        assert result["shape"] == (5, 2)
+        assert "columns" in result
+        assert "numeric_summary" in result
+        assert "numeric_col" in result["numeric_summary"]
 
     def test_load_config_file_success(self):
         """Test le chargement de fichier config existant et valide"""
@@ -364,7 +348,7 @@ class TestUtilityFunctions:
         config_data = {"key": "value", "number": 42}
 
         # Créer un fichier temporaire
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(config_data, f)
             temp_file = f.name
 
@@ -380,7 +364,7 @@ class TestUtilityFunctions:
         import tempfile
 
         # Créer un fichier temporaire avec JSON invalide
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             f.write('{"key": "value", "invalid":}')
             temp_file = f.name
 
@@ -395,13 +379,13 @@ class TestUtilityFunctions:
         import unittest.mock
 
         # Mock pour provoquer une exception générale
-        with unittest.mock.patch('builtins.open', side_effect=PermissionError("Permission denied")):
-            result = load_config_file('test.json')
+        with unittest.mock.patch("builtins.open", side_effect=PermissionError("Permission denied")):
+            result = load_config_file("test.json")
             assert result == {}
 
     def test_load_config_file_not_found(self):
         """Test le chargement de fichier config inexistant"""
-        result = load_config_file('non_existent_file.json')
+        result = load_config_file("non_existent_file.json")
 
         assert result == {}
 
@@ -411,7 +395,7 @@ class TestUtilityFunctions:
         import tempfile
 
         # Créer un fichier temporaire
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             f.write('{"key": "value"}')
             temp_file = f.name
 
@@ -424,17 +408,14 @@ class TestUtilityFunctions:
             assert result == {}
         except Exception:
             # Forcer une autre erreur en utilisant un chemin trop long
-            long_path = 'A' * 300 + '.json'
+            long_path = "A" * 300 + ".json"
             result = load_config_file(long_path)
             assert result == {}
 
     def test_export_to_csv_success(self):
         """Test l'export CSV réussi"""
-        df = pd.DataFrame({
-            'col1': [1, 2],
-            'col2': ['A', 'B']
-        })
-        filename = 'test_export.csv'
+        df = pd.DataFrame({"col1": [1, 2], "col2": ["A", "B"]})
+        filename = "test_export.csv"
 
         result = export_to_csv(df, filename)
 
@@ -447,7 +428,7 @@ class TestUtilityFunctions:
         """Test l'export CSV avec erreur"""
         # DataFrame invalide pour provoquer une erreur
         df = pd.DataFrame()
-        filename = '/invalid/path/test.csv'
+        filename = "/invalid/path/test.csv"
 
         result = export_to_csv(df, filename)
 
