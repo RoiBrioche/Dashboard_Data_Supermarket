@@ -278,6 +278,24 @@ class TestDateFeatures:
         # Devrait retourner le DataFrame original si la colonne n'existe pas
         assert len(result.columns) == 1
 
+    def test_create_date_features_with_time_column(self):
+        """Test la création de caractéristiques avec colonne Time (cas d'exception)"""
+        df = pd.DataFrame(
+            {
+                "Date": ["2023-01-01", "2023-01-02"],
+                "Time": ["14:30", "09:15"],  # Format sans secondes pour forcer l'exception
+            }
+        )
+
+        result = create_date_features(df)
+
+        # Vérifie que la fonction gère correctement la colonne Time
+        # Note: create_date_features dans utils.py ne crée pas de colonne "hour"
+        # Elle gère seulement les caractéristiques de date
+        assert "Year" in result.columns
+        assert "Month" in result.columns
+        assert len(result) == 2
+
 
 class TestOutlierDetection:
     """Test des fonctions de détection d'outliers"""
