@@ -428,18 +428,26 @@ class TestVisualizationFunctions:
         """Test la création des cartes KPI"""
         df = pd.DataFrame(
             {
-                "Total": [1000.0, 2000.0, 1500.0],
+                "Sales": [1000.0, 2000.0, 1500.0],
                 "gross margin percentage": [10.0, 15.0, 12.0],
                 "gross income": [100.0, 300.0, 180.0],
                 "Rating": [4.5, 4.2, 4.8],
+                "Invoice ID": ["001", "002", "003"],
+                "Customer type": ["Member", "Normal", "Member"],  # Ajout colonne requise
+                "Quantity": [5, 10, 8],  # Ajout colonne requise
             }
         )
 
         kpis = compute_kpis(df)
         cards = create_kpi_cards(kpis)
 
-        assert len(cards) == 4
-        assert all(hasattr(card, "children") for card in cards)
+        assert isinstance(cards, dict)  # Correction : create_kpi_cards retourne un dict
+        assert len(cards) == 5  # 5 cartes KPI (revenue, margin, transactions, avg_basket, rating)
+        assert "revenue" in cards
+        assert "margin" in cards
+        assert "transactions" in cards
+        assert "avg_basket" in cards
+        assert "rating" in cards
 
     def test_create_sales_trend_chart_weekly(self):
         """Test la création du graphique des ventes hebdomadaires"""
