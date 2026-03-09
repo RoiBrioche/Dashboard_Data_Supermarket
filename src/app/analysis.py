@@ -279,9 +279,18 @@ def hourly_analysis(df: pd.DataFrame) -> pd.DataFrame:
     Returns:
         DataFrame avec ventes par heure
     """
-    # Extraire l'heure du timestamp
+    # Extraire l'heure du timestamp - Correction du format
     df_copy = df.copy()
-    df_copy["hour"] = pd.to_datetime(df_copy["Time"], format="%I:%M:%S %p").dt.hour
+
+    # Essayer le format 24h d'abord, puis le format 12h
+    try:
+        df_copy["hour"] = pd.to_datetime(df_copy["Time"], format="%H:%M:%S").dt.hour
+    except ValueError:
+        try:
+            df_copy["hour"] = pd.to_datetime(df_copy["Time"], format="%I:%M:%S %p").dt.hour
+        except ValueError:
+            # Si aucun format ne fonctionne, utiliser mixed
+            df_copy["hour"] = pd.to_datetime(df_copy["Time"], format="mixed").dt.hour
 
     hourly_sales = (
         df_copy.groupby("hour")
