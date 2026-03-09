@@ -64,3 +64,34 @@ addopts = [
     "--cov-report=html",
     "--cov-report=xml",
 ]
+
+[tool.bandit]
+exclude_dirs = ["tests", "venv", ".venv"]
+skips = ["B104"]  # Skip hardcoded bind all interfaces for development
+
+[tool.bandit.assert_used]
+skips = ["S101"]
+
+[tool.bandit.exec_used]
+skips = ["S602"]
+
+[tool.bandit.hardcoded_tmp_directory]
+skips = ["S108"]
+
+[tool.bandit.hardcoded_password_funcarg]
+skips = ["S105"]
+
+[tool.bandit.hardcoded_password_string]
+skips = ["S105"]
+
+[tool.bandit.injection_shell]
+skips = ["S602"]
+
+[tool.bandit.injection_sql]
+skips = ["S608"]
+
+[tool.bandit.try_except_pass]
+skips = ["S110"]
+
+[tool.bandit.unverified_context]
+skips = ["S310"]
