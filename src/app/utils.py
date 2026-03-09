@@ -4,7 +4,7 @@ Fonctions de nettoyage, validation et formatage des données
 """
 
 import logging
-from typing import Any
+from typing import Any, Union
 
 import numpy as np
 import pandas as pd
@@ -125,7 +125,7 @@ def standardize_column_names(df: pd.DataFrame) -> pd.DataFrame:
     return df_standardized
 
 
-def format_currency(amount: int | float, currency: str = "€") -> str:
+def format_currency(amount: Union[int, float], currency: str = "€") -> str:
     """
     Formate un montant en devise
 
@@ -146,7 +146,7 @@ def format_currency(amount: int | float, currency: str = "€") -> str:
         return f"{currency}0.00"
 
 
-def format_percentage(value: int | float, decimals: int = 2) -> str:
+def format_percentage(value: Union[int, float], decimals: int = 2) -> str:
     """
     Formate une valeur en pourcentage
 
@@ -167,7 +167,7 @@ def format_percentage(value: int | float, decimals: int = 2) -> str:
         return "0.00%"
 
 
-def safe_divide(numerator: int | float, denominator: int | float, default: float = 0.0) -> float:
+def safe_divide(numerator: Union[int, float], denominator: Union[int, float], default: float = 0.0) -> float:
     """
     Division sécurisée qui évite les erreurs de division par zéro
 
@@ -187,7 +187,7 @@ def safe_divide(numerator: int | float, denominator: int | float, default: float
         return default
 
 
-def calculate_growth_rate(current: int | float, previous: int | float) -> float:
+def calculate_growth_rate(current: Union[int, float], previous: Union[int, float]) -> float:
     """
     Calcule le taux de croissance entre deux valeurs
 
