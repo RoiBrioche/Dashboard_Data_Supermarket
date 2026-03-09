@@ -4,7 +4,7 @@ Charte Graphique E.Leclerc - Couleurs principales
 
 # Couleurs E.Leclerc officielles
 LECLERC_ORANGE = "#ee8c11"
-LECLERC_BLUE = "#0471b6"  
+LECLERC_BLUE = "#0471b6"
 LECLERC_WHITE = "#ffffff"
 
 # Couleurs secondaires
@@ -18,7 +18,7 @@ COLOR_PATTERNS = {
     "sequential": ["#023e8a", "#0077b6", "#0096c7", "#00b4d8", "#48cae4"],
     "diverging": ["#0471b6", "#48cae4", "#ffffff", "#ffb700", "#ee8c11"],
     "categorical": [
-        LECLERC_BLUE, LECLERC_ORANGE, "#48cae4", "#ffb700", 
+        LECLERC_BLUE, LECLERC_ORANGE, "#48cae4", "#ffb700",
         "#90e0ef", "#ffd60a", "#00b4d8", "#ffaa00"
     ]
 }
