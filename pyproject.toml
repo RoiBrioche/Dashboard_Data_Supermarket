@@ -43,10 +43,12 @@ warn_unused_configs = true
 disallow_untyped_defs = false
 ignore_missing_imports = true
 mypy_path = "src"
+explicit_package_bases = true
 exclude = [
     "tests/",
     "build/",
     "dist/",
+    "src/assets/",
 ]
 
 [tool.pytest.ini_options]
