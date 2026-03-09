@@ -11,10 +11,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 
 import dash
+import dash_ag_grid as dag
 import dash_bootstrap_components as dbc
 import pandas as pd
 import plotly.graph_objects as go
-from dash import Input, Output, callback, dash_table, dcc, html
+from dash import Input, Output, callback, dcc, html
 
 # Import des modules locaux
 from app.analysis import (
@@ -706,43 +707,68 @@ def update_dashboard(period, category, payment, top_n):
 
         top_df_display = top_df.rename(columns=col_map)
 
-        table_cols = [{"name": c, "id": c} for c in top_df_display.columns]
-        products_table = dash_table.DataTable(
-            columns=table_cols,
-            data=top_df_display.round(2).to_dict("records"),
-            style_cell={
-                "textAlign": "left",
-                "padding": "12px 16px",
-                "fontFamily": "DM Sans, Arial, sans-serif",
-                "fontSize": "0.82rem",
-                "border": "none",
-                "borderBottom": "1px solid #f0f0f0",
-                "borderRight": "1px solid #f0f0f0",
-            },
-            style_header={
-                "backgroundColor": "#0471b6",
+        # Configuration des colonnes pour AgGrid
+        column_defs = [{"field": col, "headerName": col, "filter": True, "sortable": True} for col in top_df_display.columns]
+
+        # Style personnalisé pour AgGrid
+        grid_style = {
+            "height": "400px",
+            "width": "100%",
+            "minWidth": "100%",
+            ".ag-header": {
+                "background-color": "#0471b6",
                 "color": "white",
-                "fontWeight": "700",
-                "fontSize": "0.72rem",
-                "textTransform": "uppercase",
-                "letterSpacing": "0.06em",
+                "font-weight": "700",
+                "font-size": "0.72rem",
+                "text-transform": "uppercase",
+                "letter-spacing": "0.06em",
                 "border": "none",
-                "borderBottom": "2px solid #0471b6",
-                "borderRight": "1px solid #0471b6",
+                "border-bottom": "2px solid #0471b6",
+            },
+            ".ag-header-cell": {
                 "padding": "12px 16px",
+                "border-right": "1px solid #0471b6",
             },
-            style_data_conditional=[
-                {"if": {"row_index": "odd"}, "backgroundColor": "#fafbfc"},
-                {"if": {"column_id": "Ventes (€)"}, "color": LECLERC_BLUE, "fontWeight": "700"},
-                {"if": {"row_index": 0}, "borderLeft": "3px solid #ee8c11"},
-            ],
-            page_size=10,
-            style_table={
-                "borderRadius": "8px",
-                "overflow": "hidden",
-                "border": "1px solid #e8ecf0",
-                "boxShadow": "0 1px 4px rgba(0,0,0,0.04)",
+            ".ag-row": {
+                "font-family": "DM Sans, Arial, sans-serif",
+                "font-size": "0.82rem",
+                "border-bottom": "1px solid #f0f0f0",
             },
+            ".ag-row-odd": {
+                "background-color": "#fafbfc",
+            },
+            ".ag-cell": {
+                "padding": "12px 16px",
+                "border-right": "1px solid #f0f0f0",
+                "text-align": "left",
+            },
+            ".ag-cell[col-id='Ventes (€)']": {
+                "color": LECLERC_BLUE,
+                "font-weight": "700",
+            },
+            ".ag-row-first": {
+                "border-left": "3px solid #ee8c11",
+            },
+        }
+
+        products_table = dag.AgGrid(
+            rowData=top_df_display.round(2).to_dict("records"),
+            columnDefs=column_defs,
+            defaultColDef={
+                "filter": True,
+                "sortable": True,
+                "resizable": True,
+                "flex": 1,  # Fait que les colonnes remplissent l'espace disponible
+                "minWidth": 100,  # Largeur minimale pour chaque colonne
+            },
+            dashGridOptions={
+                "pagination": True,
+                "paginationPageSize": 10,
+                "domLayout": "autoHeight",  # Ajuste la hauteur automatiquement
+                "sizeColumnsToFit": True,  # Ajuste les colonnes pour remplir la largeur
+            },
+            style=grid_style,
+            className="ag-theme-alpine ag-grid-full-width",
         )
     except Exception as e:
         products_table = dbc.Alert(f"Erreur top produits: {e}", color="danger")
