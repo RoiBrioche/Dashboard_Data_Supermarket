@@ -13,7 +13,7 @@
 ### 🛠️ Tout-en-un
 Remplace efficacement :
 - `flake8` (linting)
-- `black` (formatage)  
+- `black` (formatage)
 - `isort` (tri des imports)
 
 ### 🔧 Utilisation courante

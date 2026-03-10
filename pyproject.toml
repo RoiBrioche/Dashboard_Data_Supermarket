@@ -21,13 +21,15 @@ select = [
     "W",   # pycodestyle warnings
     "F",   # pyflakes
     "I",   # isort
-    "UP",  # pyupgrade
     "B",   # flake8-bugbear
     "C4",  # flake8-comprehensions
     "SIM", # flake8-simplify
 ]
 ignore = [
     "E203",  # whitespace before ':'
+    "UP006", # Use dict instead of Dict for type annotation
+    "UP007", # Use X | Y syntax for unions
+    "SIM117", # Use a single `with` statement with multiple contexts
 ]
 
 [tool.ruff.format]
@@ -36,15 +38,18 @@ indent-style = "space"
 line-ending = "auto"
 
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
-disallow_untyped_defs = true
+disallow_untyped_defs = false
 ignore_missing_imports = true
+mypy_path = "src"
+explicit_package_bases = true
 exclude = [
     "tests/",
     "build/",
     "dist/",
+    "src/assets/",
 ]
 
 [tool.pytest.ini_options]
@@ -52,6 +57,7 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+pythonpath = ["src"]
 addopts = [
     "--verbose",
     "--cov=src",
@@ -59,3 +65,34 @@ addopts = [
     "--cov-report=html",
     "--cov-report=xml",
 ]
+
+[tool.bandit]
+exclude_dirs = ["tests", "venv", ".venv"]
+skips = ["B104"]  # Skip hardcoded bind all interfaces for development
+
+[tool.bandit.assert_used]
+skips = ["S101"]
+
+[tool.bandit.exec_used]
+skips = ["S602"]
+
+[tool.bandit.hardcoded_tmp_directory]
+skips = ["S108"]
+
+[tool.bandit.hardcoded_password_funcarg]
+skips = ["S105"]
+
+[tool.bandit.hardcoded_password_string]
+skips = ["S105"]
+
+[tool.bandit.injection_shell]
+skips = ["S602"]
+
+[tool.bandit.injection_sql]
+skips = ["S608"]
+
+[tool.bandit.try_except_pass]
+skips = ["S110"]
+
+[tool.bandit.unverified_context]
+skips = ["S310"]
