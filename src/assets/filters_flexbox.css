@@ -1,0 +1,45 @@
+/* ═══════════════════════════════════════════════
+   FILTRES FLEXBOX E.LECLERC
+════════════════════════════════════════════════ */
+
+/* Container principal des filtres */
+.filters-container {
+    display: flex !important;
+    gap: 20px !important;  /* Espacement entre les colonnes */
+    align-items: flex-end !important;  /* Aligner en bas */
+    flex-wrap: wrap !important;  /* Permettre le retour à la ligne si nécessaire */
+}
+
+/* Chaque colonne de filtre */
+.filter-column {
+    flex: 1 !important;  /* Chaque colonne prend une part égale */
+    min-width: 200px !important;  /* Largeur minimum pour éviter l'écrasement */
+}
+
+/* Pour la section "Villes à analyser" - plus large */
+.filter-column:nth-child(4) {
+    flex: 1.5 !important;  /* 50% plus large que les autres */
+    min-width: 250px !important;
+}
+
+/* Responsive - si pas assez de place */
+@media (max-width: 1200px) {
+    .filters-container {
+        flex-wrap: wrap !important;
+    }
+
+    .filter-column {
+        flex: 1 1 45% !important;  /* 2 colonnes par ligne */
+        margin-bottom: 10px !important;
+    }
+
+    .filter-column:nth-child(4) {
+        flex: 1 1 100% !important;  /* Villes sur toute la largeur */
+    }
+}
+
+@media (max-width: 768px) {
+    .filter-column {
+        flex: 1 1 100% !important;  /* 1 colonne par ligne sur mobile */
+    }
+}

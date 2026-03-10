@@ -233,6 +233,37 @@ payment_options = [{"label": "Tous les modes", "value": "all"}]
 if "Payment" in df_clean.columns:
     payment_options += [{"label": p, "value": p} for p in sorted(df_clean["Payment"].unique())]
 
+# Options pour les villes (pour les tabs)
+city_options = []
+if "City" in df_clean.columns:
+    city_options = [{"label": city, "value": city} for city in sorted(df_clean["City"].unique())]
+
+# Créer les boutons-toggle pour les villes
+city_toggle_buttons = []
+# Bouton "Toutes"
+city_toggle_buttons.append(
+    dbc.Button(
+        "Toutes",
+        id="city-toggle-all",
+        color="primary",
+        outline=True,
+        size="sm",
+        className="city-toggle-btn me-1",
+    )
+)
+# Boutons individuels
+for city in city_options:
+    city_toggle_buttons.append(
+        dbc.Button(
+            city["label"],
+            id=f"city-toggle-{city['value']}",
+            color="primary",
+            outline=True,
+            size="sm",
+            className="city-toggle-btn me-1",
+        )
+    )
+
 
 # ─────────────────────────────────────────────
 # LAYOUT
@@ -328,12 +359,12 @@ app.layout = html.Div(
                         section_card(
                             "Filtres",
                             "⚙",
-                            dbc.Row(
+                            html.Div(
                                 [
-                                    dbc.Col(
+                                    html.Div(
                                         [
                                             html.Label(
-                                                "Granularité temporelle",
+                                                "Période",
                                                 style={
                                                     "fontSize": "0.75rem",
                                                     "fontWeight": "600",
@@ -344,16 +375,17 @@ app.layout = html.Div(
                                             dbc.Select(
                                                 id="period-dropdown",
                                                 options=[
-                                                    {"label": "Journalier", "value": "daily"},
-                                                    {"label": "Hebdomadaire", "value": "weekly"},
-                                                    {"label": "Mensuel", "value": "monthly"},
+                                                    {"label": "Tout", "value": "all"},
+                                                    {"label": "Aujourd'hui", "value": "today"},
+                                                    {"label": "Cette semaine", "value": "week"},
+                                                    {"label": "Ce mois", "value": "month"},
                                                 ],
-                                                value="daily",
+                                                value="all",
                                             ),
                                         ],
-                                        width=3,
+                                        className="filter-column",
                                     ),
-                                    dbc.Col(
+                                    html.Div(
                                         [
                                             html.Label(
                                                 "Catégorie produit",
@@ -370,9 +402,9 @@ app.layout = html.Div(
                                                 value="all",
                                             ),
                                         ],
-                                        width=3,
+                                        className="filter-column",
                                     ),
-                                    dbc.Col(
+                                    html.Div(
                                         [
                                             html.Label(
                                                 "Mode de paiement",
@@ -389,34 +421,34 @@ app.layout = html.Div(
                                                 value="all",
                                             ),
                                         ],
-                                        width=3,
+                                        className="filter-column",
                                     ),
-                                    dbc.Col(
+                                    html.Div(
                                         [
                                             html.Label(
-                                                id="slider-label",
+                                                "Villes à analyser",
                                                 style={
                                                     "fontSize": "0.75rem",
                                                     "fontWeight": "600",
                                                     "color": "#6c757d",
-                                                    "marginBottom": "10px",
-                                                    "display": "block",
+                                                    "marginBottom": "8px",
                                                 },
                                             ),
-                                            dcc.Slider(
-                                                id="top-products-slider",
-                                                min=5,
-                                                max=20,
-                                                step=1,
-                                                value=10,
-                                                marks={5: "5", 10: "10", 15: "15", 20: "20"},
-                                                tooltip={"placement": "bottom", "always_visible": True},
+                                            html.Div(
+                                                dbc.Checklist(
+                                                    id="city-checklist",
+                                                    options=city_options,
+                                                    value=[city["value"] for city in city_options],  # Toutes cochées
+                                                    inline=True,
+                                                    className="",  # Supprimer la classe modern-city-toggles
+                                                ),
+                                                className="toggles-container modern-city-toggles",  # Classes sur container
                                             ),
                                         ],
-                                        width=3,
+                                        className="filter-column",
                                     ),
                                 ],
-                                className="align-items-end",
+                                className="filters-container",
                             ),
                             height="auto",
                         )
@@ -477,13 +509,19 @@ app.layout = html.Div(
                     ],
                     className="mb-3",
                 ),
-                # ── TOP PRODUITS ──────────────────────────────
+                # ── ANALYSES COMBINÉES ──────────────────────────
                 dbc.Row(
                     [
                         section_card(
-                            "Top Produits",
-                            "🏆",
-                            html.Div(id="top-products-table"),
+                            "Analyses",
+                            "📊",
+                            [
+                                html.H5("Top Catégories", className="mb-3", style={"color": LECLERC_BLUE}),
+                                html.Div(id="top-categories-table"),
+                                html.Hr(className="my-4", style={"borderColor": "#e8ecf0"}),
+                                html.H5("Analyse par Ville", className="mb-3", style={"color": LECLERC_BLUE}),
+                                html.Div(id="cities-analysis-table"),
+                            ],
                             width=12,
                         )
                     ],
@@ -512,14 +550,16 @@ app.layout = html.Div(
             fluid=False,
             style={"maxWidth": "1200px"},
         ),
+        # ── CSS PERSONNALISÉ ───────────────────────────────
+        html.Link(rel="stylesheet", href="/assets/custom_toggles.css"),
+        html.Link(rel="stylesheet", href="/assets/filters_flexbox.css"),
     ],
     style={"fontFamily": "'DM Sans', Arial, sans-serif", "backgroundColor": "#f7f9fb", "minHeight": "100vh"},
 )
 
 
 # ─────────────────────────────────────────────
-# CALLBACK PRINCIPAL
-# ─────────────────────────────────────────────
+# Callback principal pour mettre à jour le dashboard
 @callback(
     [
         Output("validation-alerts", "children"),
@@ -528,26 +568,24 @@ app.layout = html.Div(
         Output("payment-pie-chart", "figure"),
         Output("category-sales-chart", "figure"),
         Output("hourly-analysis-chart", "figure"),
-        Output("top-products-table", "children"),
+        Output("top-categories-table", "children"),
+        Output("cities-analysis-table", "children"),
         Output("data-summary", "children"),
-        Output("slider-label", "children"),
     ],
     [
         Input("period-dropdown", "value"),
         Input("category-dropdown", "value"),
         Input("payment-dropdown", "value"),
-        Input("top-products-slider", "value"),
+        Input("city-checklist", "value"),
     ],
 )
-def update_dashboard(period, category, payment, top_n):
+def update_dashboard(period, category, payment, selected_cities):
     """Met à jour tous les composants du dashboard selon les filtres actifs."""
-
-    slider_label = f"Top {top_n} produits"
 
     # ── Données vides ──
     if df_clean.empty:
         alert = dbc.Alert("❌ Aucune donnée disponible. Vérifiez le chemin du fichier CSV.", color="danger", className="mt-2")
-        return alert, [], empty_figure(), empty_figure(), empty_figure(), empty_figure(), "—", "—", slider_label
+        return alert, [], empty_figure(), empty_figure(), empty_figure(), empty_figure(), "—", "—"
 
     # ── Alertes validation ──
     alerts = []
@@ -563,6 +601,12 @@ def update_dashboard(period, category, payment, top_n):
         filtered_df = filtered_df[filtered_df["Product line"] == category]
     if payment != "all" and "Payment" in filtered_df.columns:
         filtered_df = filtered_df[filtered_df["Payment"] == payment]
+
+    # Filtrage par villes sélectionnées
+    if selected_cities:
+        filtered_df = filtered_df[filtered_df["City"].isin(selected_cities)]
+    # Si aucune ville sélectionnée, on garde toutes les villes (au lieu de tout cacher)
+    # pour éviter que les graphiques soient vides
 
     # ── KPIs ──
     try:
@@ -585,7 +629,11 @@ def update_dashboard(period, category, payment, top_n):
 
     # ── Graphique ventes ──
     try:
-        time_data = sales_over_time(filtered_df, period)
+        # Convertir les valeurs de période pour la fonction sales_over_time
+        period_mapping = {"all": "daily", "today": "daily", "week": "weekly", "month": "monthly"}
+        mapped_period = period_mapping.get(period, "daily")
+
+        time_data = sales_over_time(filtered_df, period=mapped_period)
         sales_fig = go.Figure()
         # Zone remplie sous la courbe
         sales_fig.add_trace(
@@ -690,14 +738,15 @@ def update_dashboard(period, category, payment, top_n):
         print(f"ERREUR graphique horaire: {e}")
         hourly_fig = empty_figure(f"Erreur: {e}")
 
-    # ── Top produits ──
+    # ── Top Catégories ──
     try:
-        top_df = top_products(filtered_df, n=top_n, metric="sales")
+        # Afficher toujours les 6 catégories (toutes)
+        top_df = top_products(filtered_df, n=6, metric="sales")
 
-        # Harmoniser les colonnes selon ce que retourne top_products
+        # Harmoniser les colonnes pour l'affichage
         col_map = {}
         if "Product line" in top_df.columns:
-            col_map["Product line"] = "Produit"
+            col_map["Product line"] = "Catégorie"
         if "Sales" in top_df.columns:
             col_map["Sales"] = "Ventes (€)"
         if "gross income" in top_df.columns:
@@ -710,11 +759,10 @@ def update_dashboard(period, category, payment, top_n):
         # Configuration des colonnes pour AgGrid
         column_defs = [{"field": col, "headerName": col, "filter": True, "sortable": True} for col in top_df_display.columns]
 
-        # Style personnalisé pour AgGrid
+        # Style personnalisé pour AgGrid (pleine largeur pour affichage vertical)
         grid_style = {
-            "height": "400px",
+            "height": "300px",
             "width": "100%",
-            "minWidth": "100%",
             ".ag-header": {
                 "background-color": "#0471b6",
                 "color": "white",
@@ -726,19 +774,19 @@ def update_dashboard(period, category, payment, top_n):
                 "border-bottom": "2px solid #0471b6",
             },
             ".ag-header-cell": {
-                "padding": "12px 16px",
+                "padding": "10px 14px",
                 "border-right": "1px solid #0471b6",
             },
             ".ag-row": {
                 "font-family": "DM Sans, Arial, sans-serif",
-                "font-size": "0.82rem",
+                "font-size": "0.80rem",
                 "border-bottom": "1px solid #f0f0f0",
             },
             ".ag-row-odd": {
                 "background-color": "#fafbfc",
             },
             ".ag-cell": {
-                "padding": "12px 16px",
+                "padding": "10px 14px",
                 "border-right": "1px solid #f0f0f0",
                 "text-align": "left",
             },
@@ -751,27 +799,117 @@ def update_dashboard(period, category, payment, top_n):
             },
         }
 
-        products_table = dag.AgGrid(
+        categories_table = dag.AgGrid(
             rowData=top_df_display.round(2).to_dict("records"),
             columnDefs=column_defs,
             defaultColDef={
                 "filter": True,
                 "sortable": True,
                 "resizable": True,
-                "flex": 1,  # Fait que les colonnes remplissent l'espace disponible
-                "minWidth": 100,  # Largeur minimale pour chaque colonne
+                "flex": 1,
+                "minWidth": 120,
             },
             dashGridOptions={
-                "pagination": True,
-                "paginationPageSize": 10,
-                "domLayout": "autoHeight",  # Ajuste la hauteur automatiquement
-                "sizeColumnsToFit": True,  # Ajuste les colonnes pour remplir la largeur
+                "pagination": False,
+                "domLayout": "autoHeight",
+                "sizeColumnsToFit": True,
             },
             style=grid_style,
             className="ag-theme-alpine ag-grid-full-width",
         )
     except Exception as e:
-        products_table = dbc.Alert(f"Erreur top produits: {e}", color="danger")
+        categories_table = dbc.Alert(f"Erreur catégories: {e}", color="danger", className="p-2")
+
+    # ── Analyse par ville ──
+    try:
+        cities_df = (
+            filtered_df.groupby("City")
+            .agg({"Sales": "sum", "Invoice ID": "count", "Rating": "mean", "Quantity": "sum", "gross income": "sum"})
+            .round(2)
+        )
+
+        cities_df = cities_df.sort_values("Sales", ascending=False)
+
+        # Afficher seulement la/les villes sélectionnées
+        if cities_df.empty:
+            cities_table = dbc.Alert("Aucune ville sélectionnée", color="info", className="p-2")
+        else:
+            # Renommer les colonnes pour l'affichage
+            cities_df_display = cities_df.rename(
+                columns={
+                    "Sales": "Ventes (€)",
+                    "Invoice ID": "Transactions",
+                    "Rating": "Satisfaction moyenne",
+                    "Quantity": "Quantité totale",
+                    "gross income": "Marge (€)",
+                }
+            ).reset_index()
+
+            # Configuration des colonnes pour AgGrid
+            column_defs = [
+                {"field": col, "headerName": col, "filter": True, "sortable": True} for col in cities_df_display.columns
+            ]
+
+            # Style personnalisé pour AgGrid (pleine largeur pour affichage vertical)
+            grid_style = {
+                "height": "250px",
+                "width": "100%",
+                ".ag-header": {
+                    "background-color": "#0471b6",
+                    "color": "white",
+                    "font-weight": "700",
+                    "font-size": "0.72rem",
+                    "text-transform": "uppercase",
+                    "letter-spacing": "0.06em",
+                    "border": "none",
+                    "border-bottom": "2px solid #0471b6",
+                },
+                ".ag-header-cell": {
+                    "padding": "10px 14px",
+                    "border-right": "1px solid #0471b6",
+                },
+                ".ag-row": {
+                    "font-family": "DM Sans, Arial, sans-serif",
+                    "font-size": "0.80rem",
+                    "border-bottom": "1px solid #f0f0f0",
+                },
+                ".ag-row-odd": {
+                    "background-color": "#fafbfc",
+                },
+                ".ag-cell": {
+                    "padding": "10px 14px",
+                    "border-right": "1px solid #f0f0f0",
+                    "text-align": "left",
+                },
+                ".ag-cell[col-id='Ventes (€)']": {
+                    "color": LECLERC_BLUE,
+                    "font-weight": "700",
+                },
+                ".ag-row-first": {
+                    "border-left": "3px solid #ee8c11",
+                },
+            }
+
+            cities_table = dag.AgGrid(
+                rowData=cities_df_display.to_dict("records"),
+                columnDefs=column_defs,
+                defaultColDef={
+                    "filter": True,
+                    "sortable": True,
+                    "resizable": True,
+                    "flex": 1,
+                    "minWidth": 140,
+                },
+                dashGridOptions={
+                    "pagination": False,
+                    "domLayout": "autoHeight",
+                    "sizeColumnsToFit": True,
+                },
+                style=grid_style,
+                className="ag-theme-alpine ag-grid-full-width",
+            )
+    except Exception as e:
+        cities_table = dbc.Alert(f"Erreur analyse villes: {e}", color="danger")
 
     # ── Résumé des données ──
     try:
@@ -848,9 +986,9 @@ def update_dashboard(period, category, payment, top_n):
         pie_fig,
         cat_fig,
         hourly_fig,
-        products_table,
+        categories_table,
+        cities_table,
         summary_html,
-        slider_label,
     )
 
 
