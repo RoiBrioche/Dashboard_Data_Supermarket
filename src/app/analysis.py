@@ -124,33 +124,92 @@ def sales_over_time(df: pd.DataFrame, period: str = "daily") -> pd.DataFrame:
 
     Args:
         df: DataFrame des transactions
-        period: 'daily', 'weekly', 'monthly'
+        period: 'hourly', 'daily', 'weekly', 'monthly'
 
     Returns:
         DataFrame avec ventes par période
     """
+    import logging
+
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+
+    logger.info("=== SALES_OVER_TIME DEBUG ===")
+    logger.info(f"Period demandé: {period}")
+    logger.info(f"DataFrame shape: {df.shape}")
+    logger.info(f"Colonnes disponibles: {df.columns.tolist()}")
+
     df_copy = df.copy()
 
     # Convertir en datetime pour éviter les problèmes d'accès .dt
-    df_copy["Date"] = pd.to_datetime(df_copy["Date"])
+    try:
+        df_copy["Date"] = pd.to_datetime(df_copy["Date"])
+        logger.info("✅ Conversion Date vers datetime réussie")
+    except Exception as e:
+        logger.error(f"❌ Erreur conversion Date: {e}")
+        raise
 
-    if period == "daily":
-        df_copy["period"] = df_copy["Date"].dt.date
-    elif period == "weekly":
-        df_copy["period"] = df_copy["Date"].dt.to_period("W").dt.start_time
-    elif period == "monthly":
-        df_copy["period"] = df_copy["Date"].dt.to_period("M").dt.start_time
+    # Créer une colonne datetime complète en combinant Date et Time
+    if "Time" in df_copy.columns:
+        logger.info("📝 Colonne Time trouvée, création de datetime complet")
+        try:
+            # Afficher quelques exemples pour débogage
+            logger.info(f"Exemples de dates: {df_copy['Date'].head(3).tolist()}")
+            logger.info(f"Exemples de times: {df_copy['Time'].head(3).tolist()}")
+
+            # Approche simple : créer la datetime depuis les chaînes de caractères brutes
+            datetime_strings = df_copy["Date"].dt.strftime("%Y-%m-%d") + " " + df_copy["Time"].astype(str)
+            df_copy["datetime"] = pd.to_datetime(datetime_strings, format="%Y-%m-%d %H:%M:%S", errors="coerce")
+            logger.info(f"✅ Création datetime réussie, valeurs nulles: {df_copy['datetime'].isna().sum()}")
+        except Exception as e:
+            logger.error(f"❌ Erreur création datetime: {type(e).__name__}: {e}")
+            logger.error(f"Types des colonnes - Date: {df_copy['Date'].dtype}, Time: {df_copy['Time'].dtype}")
+            raise
     else:
-        raise ValueError("Period must be 'daily', 'weekly', or 'monthly'")
+        df_copy["datetime"] = df_copy["Date"]
+        logger.info("📝 Pas de colonne Time, utilisation de Date uniquement")
 
-    time_sales = (
-        df_copy.groupby("period")
-        .agg({"Sales": "sum", "gross income": "sum", "Invoice ID": "count"})
-        .rename(columns={"Invoice ID": "transactions", "gross income": "margin"})
-        .round(2)
-    )
+    try:
+        if period == "hourly":
+            # Regrouper par heure pour la granularité fine
+            logger.info("🕐 Traitement période horaire")
+            df_copy["period"] = df_copy["datetime"].dt.floor("h")  # Arrondir à l'heure (minuscule!)
+            logger.info(f"✅ Période horaire créée, exemples: {df_copy['period'].head(3).tolist()}")
+        elif period == "daily":
+            df_copy["period"] = df_copy["datetime"].dt.date
+            logger.info("📅 Période journalière créée")
+        elif period == "weekly":
+            df_copy["period"] = df_copy["datetime"].dt.to_period("W").dt.start_time
+            logger.info("📆 Période hebdomadaire créée")
+        elif period == "monthly":
+            df_copy["period"] = df_copy["datetime"].dt.to_period("M").dt.start_time
+            logger.info("🗓️ Période mensuelle créée")
+        else:
+            raise ValueError("Period must be 'hourly', 'daily', 'weekly', or 'monthly'")
+    except Exception as e:
+        logger.error(f"❌ Erreur création période: {type(e).__name__}: {e}")
+        raise
 
-    return time_sales.reset_index()
+    try:
+        logger.info("📊 Agrégation des données...")
+        time_sales = (
+            df_copy.groupby("period")
+            .agg({"Sales": "sum", "gross income": "sum", "Invoice ID": "count"})
+            .rename(columns={"Invoice ID": "transactions", "gross income": "margin"})
+            .round(2)
+        )
+        logger.info(f"✅ Agrégation réussie, shape: {time_sales.shape}")
+        logger.info(f"Colonnes finales: {time_sales.columns.tolist()}")
+
+        result = time_sales.reset_index()
+        logger.info(f"✅ sales_over_time terminé avec succès, shape final: {result.shape}")
+        return result
+
+    except Exception as e:
+        logger.error(f"❌ Erreur agrégation: {type(e).__name__}: {e}")
+        logger.error(f"DataFrame avant agrégation - shape: {df_copy.shape}")
+        logger.error(f"Valeurs uniques de période: {df_copy['period'].unique()[:10]}")  # Limiter à 10 valeurs
+        raise
 
 
 def profit_by_category(df: pd.DataFrame) -> pd.DataFrame:

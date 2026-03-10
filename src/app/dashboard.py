@@ -31,6 +31,7 @@ from app.analysis import (
 from app.utils import (
     clean_dataframe,
     create_date_features,
+    filter_by_period,
     get_data_summary,
     validate_transaction_data,
 )
@@ -225,13 +226,50 @@ server = app.server
 # ─────────────────────────────────────────────
 # OPTIONS DROPDOWN (construites une seule fois)
 # ─────────────────────────────────────────────
-category_options = [{"label": "Toutes les catégories", "value": "all"}]
-if "Product line" in df_clean.columns:
-    category_options += [{"label": c, "value": c} for c in sorted(df_clean["Product line"].unique())]
+# Options pour les dates disponibles dans les données
+available_dates = []
+if not df_clean.empty and "Date" in df_clean.columns:
+    date_series = pd.to_datetime(df_clean["Date"]).dt.date.unique()
+    available_dates = sorted(date_series)
+    # Créer les options pour le dropdown (format JJ/MM/YYYY)
+    date_options = [{"label": date.strftime("%d/%m/%Y"), "value": date.strftime("%Y-%m-%d")} for date in available_dates]
+else:
+    date_options = []
 
-payment_options = [{"label": "Tous les modes", "value": "all"}]
+# Options pour les catégories (pour les toggles)
+category_options = []
+if "Product line" in df_clean.columns:
+    category_options = [{"label": cat, "value": cat} for cat in sorted(df_clean["Product line"].unique())]
+
+# Créer les boutons-toggle pour les catégories
+category_toggle_buttons = []
+# Bouton "Toutes"
+category_toggle_buttons.append(
+    dbc.Button(
+        "Toutes",
+        id="category-toggle-all",
+        color="primary",
+        outline=True,
+        size="sm",
+        className="category-toggle-btn me-1",
+    )
+)
+# Boutons individuels
+for category in category_options:
+    category_toggle_buttons.append(
+        dbc.Button(
+            category["label"],
+            id=f"category-toggle-{category['value']}",
+            color="primary",
+            outline=True,
+            size="sm",
+            className="category-toggle-btn me-1",
+        )
+    )
+
+payment_options = []
 if "Payment" in df_clean.columns:
-    payment_options += [{"label": p, "value": p} for p in sorted(df_clean["Payment"].unique())]
+    payment_options = [{"label": p, "value": p} for p in sorted(df_clean["Payment"].unique())]
 
 # Options pour les villes (pour les tabs)
 city_options = []
@@ -353,191 +391,286 @@ app.layout = html.Div(
             [
                 # Alerte validation
                 html.Div(id="validation-alerts", style={"marginTop": "20px"}),
-                # ── FILTRES ────────────────────────────────
+                # ── LAYOUT PRINCIPAL AVEC SIDEBAR ────────────────────────
                 dbc.Row(
                     [
-                        section_card(
-                            "Filtres",
-                            "⚙",
+                        # ── SIDEBAR FILTRES ────────────────────────────────
+                        dbc.Col(
                             html.Div(
                                 [
+                                    # Header sidebar
                                     html.Div(
                                         [
-                                            html.Label(
-                                                "Période",
-                                                style={
-                                                    "fontSize": "0.75rem",
-                                                    "fontWeight": "600",
-                                                    "color": "#6c757d",
-                                                    "marginBottom": "6px",
-                                                },
-                                            ),
-                                            dbc.Select(
-                                                id="period-dropdown",
-                                                options=[
-                                                    {"label": "Tout", "value": "all"},
-                                                    {"label": "Aujourd'hui", "value": "today"},
-                                                    {"label": "Cette semaine", "value": "week"},
-                                                    {"label": "Ce mois", "value": "month"},
-                                                ],
-                                                value="all",
-                                            ),
+                                            html.Span("⚙", style={"marginRight": "8px", "fontSize": "1rem"}),
+                                            html.Span("Filtres", style={"fontWeight": "600", "fontSize": "0.9rem"}),
                                         ],
-                                        className="filter-column",
+                                        style={
+                                            "background": LECLERC_BLUE,
+                                            "color": "white",
+                                            "padding": "12px 16px",
+                                            "borderRadius": "8px 8px 0 0",
+                                            "display": "flex",
+                                            "alignItems": "center",
+                                        },
                                     ),
+                                    # Contenu sidebar
                                     html.Div(
                                         [
-                                            html.Label(
-                                                "Catégorie produit",
-                                                style={
-                                                    "fontSize": "0.75rem",
-                                                    "fontWeight": "600",
-                                                    "color": "#6c757d",
-                                                    "marginBottom": "6px",
-                                                },
-                                            ),
-                                            dbc.Select(
-                                                id="category-dropdown",
-                                                options=category_options,
-                                                value="all",
-                                            ),
-                                        ],
-                                        className="filter-column",
-                                    ),
-                                    html.Div(
-                                        [
-                                            html.Label(
-                                                "Mode de paiement",
-                                                style={
-                                                    "fontSize": "0.75rem",
-                                                    "fontWeight": "600",
-                                                    "color": "#6c757d",
-                                                    "marginBottom": "6px",
-                                                },
-                                            ),
-                                            dbc.Select(
-                                                id="payment-dropdown",
-                                                options=payment_options,
-                                                value="all",
-                                            ),
-                                        ],
-                                        className="filter-column",
-                                    ),
-                                    html.Div(
-                                        [
-                                            html.Label(
-                                                "Villes à analyser",
-                                                style={
-                                                    "fontSize": "0.75rem",
-                                                    "fontWeight": "600",
-                                                    "color": "#6c757d",
-                                                    "marginBottom": "8px",
-                                                },
-                                            ),
+                                            # Période
                                             html.Div(
-                                                dbc.Checklist(
-                                                    id="city-checklist",
-                                                    options=city_options,
-                                                    value=[city["value"] for city in city_options],  # Toutes cochées
-                                                    inline=True,
-                                                    className="",  # Supprimer la classe modern-city-toggles
-                                                ),
-                                                className="toggles-container modern-city-toggles",  # Classes sur container
+                                                [
+                                                    html.Label(
+                                                        "Période",
+                                                        style={
+                                                            "fontSize": "0.8rem",
+                                                            "fontWeight": "600",
+                                                            "color": "#6c757d",
+                                                            "marginBottom": "8px",
+                                                            "display": "block",
+                                                        },
+                                                    ),
+                                                    dbc.Select(
+                                                        id="period-dropdown",
+                                                        options=[
+                                                            {"label": "Tout", "value": "all"},
+                                                            {"label": "Jour", "value": "day"},
+                                                            {"label": "Cette semaine", "value": "week"},
+                                                            {"label": "Ce mois", "value": "month"},
+                                                        ],
+                                                        value="all",
+                                                        size="sm",
+                                                        style={"marginBottom": "10px"},
+                                                    ),
+                                                    html.Div(
+                                                        dcc.DatePickerSingle(
+                                                            id="day-picker",
+                                                            placeholder="Sélectionner un jour",
+                                                            min_date_allowed="2019-01-01",
+                                                            max_date_allowed="2019-03-30",
+                                                            initial_visible_month="2019-02-01",  # Centre sur février 2019
+                                                            date=None,
+                                                            display_format="DD/MM/YYYY",
+                                                            style={"width": "100%"},
+                                                        ),
+                                                        id="day-picker-container",
+                                                        style={"display": "none", "marginBottom": "20px"},
+                                                    ),
+                                                ],
+                                                style={
+                                                    "marginBottom": "20px",
+                                                    "padding": "15px",
+                                                    "border": "2px solid #ee8c11",
+                                                    "borderRadius": "8px",
+                                                    "backgroundColor": "#fff9f5",
+                                                },
+                                            ),
+                                            # Catégories
+                                            html.Div(
+                                                [
+                                                    html.Label(
+                                                        "Catégories produits",
+                                                        style={
+                                                            "fontSize": "0.8rem",
+                                                            "fontWeight": "600",
+                                                            "color": "#6c757d",
+                                                            "marginBottom": "12px",
+                                                            "display": "block",
+                                                        },
+                                                    ),
+                                                    html.Div(
+                                                        dbc.Checklist(
+                                                            id="category-checklist",
+                                                            options=category_options,
+                                                            value=[category["value"] for category in category_options],
+                                                            className="vertical-category-toggles",
+                                                        ),
+                                                        className="sidebar-toggles-container",
+                                                    ),
+                                                ],
+                                                style={
+                                                    "marginBottom": "25px",
+                                                    "padding": "15px",
+                                                    "border": "2px solid #ee8c11",
+                                                    "borderRadius": "8px",
+                                                    "backgroundColor": "#fff9f5",
+                                                },
+                                            ),
+                                            # Villes
+                                            html.Div(
+                                                [
+                                                    html.Label(
+                                                        "Villes",
+                                                        style={
+                                                            "fontSize": "0.8rem",
+                                                            "fontWeight": "600",
+                                                            "color": "#6c757d",
+                                                            "marginBottom": "12px",
+                                                            "display": "block",
+                                                        },
+                                                    ),
+                                                    html.Div(
+                                                        dbc.Checklist(
+                                                            id="city-checklist",
+                                                            options=city_options,
+                                                            value=[city["value"] for city in city_options],
+                                                            className="vertical-city-toggles",
+                                                        ),
+                                                        className="sidebar-toggles-container",
+                                                    ),
+                                                ],
+                                                style={
+                                                    "marginBottom": "25px",
+                                                    "padding": "15px",
+                                                    "border": "2px solid #ee8c11",
+                                                    "borderRadius": "8px",
+                                                    "backgroundColor": "#fff9f5",
+                                                },
+                                            ),
+                                            # Paiement
+                                            html.Div(
+                                                [
+                                                    html.Label(
+                                                        "Mode de paiement",
+                                                        style={
+                                                            "fontSize": "0.8rem",
+                                                            "fontWeight": "600",
+                                                            "color": "#6c757d",
+                                                            "marginBottom": "12px",
+                                                            "display": "block",
+                                                        },
+                                                    ),
+                                                    html.Div(
+                                                        dbc.Checklist(
+                                                            id="payment-checklist",
+                                                            options=payment_options,
+                                                            value=[payment["value"] for payment in payment_options],
+                                                            className="vertical-payment-toggles",
+                                                        ),
+                                                        className="sidebar-toggles-container",
+                                                    ),
+                                                ],
+                                                style={
+                                                    "marginBottom": "25px",
+                                                    "padding": "15px",
+                                                    "border": "2px solid #ee8c11",
+                                                    "borderRadius": "8px",
+                                                    "backgroundColor": "#fff9f5",
+                                                },
                                             ),
                                         ],
-                                        className="filter-column",
+                                        style={
+                                            "background": "white",
+                                            "border": "1px solid #e8ecf0",
+                                            "borderTop": "none",
+                                            "borderRadius": "0 0 8px 8px",
+                                            "padding": "20px",
+                                        },
                                     ),
                                 ],
-                                className="filters-container",
+                                className="sidebar-scroll-inner",
+                                style={"marginBottom": "20px"},
                             ),
-                            height="auto",
-                        )
-                    ],
-                    className="mt-4 mb-3",
-                ),
-                # ── KPI CARDS ────────────────────────────────
-                html.Div(id="kpi-cards", className="kpi-card-wrapper mb-3"),
-                # ── GRAPHIQUES LIGNE 1 ────────────────────────
-                dbc.Row(
-                    [
-                        section_card(
-                            "Évolution des ventes",
-                            "📈",
-                            dcc.Graph(
-                                id="sales-trend-chart",
-                                config={"displayModeBar": False},
-                                style={"height": "320px"},
-                            ),
-                            width=8,
+                            width=3,
+                            className="sidebar-col",
                         ),
-                        section_card(
-                            "Modes de paiement",
-                            "💳",
-                            dcc.Graph(
-                                id="payment-pie-chart",
-                                config={"displayModeBar": False},
-                                style={"height": "320px"},
-                            ),
-                            width=4,
-                        ),
-                    ],
-                    className="mb-3",
-                ),
-                # ── GRAPHIQUES LIGNE 2 ────────────────────────
-                dbc.Row(
-                    [
-                        section_card(
-                            "Ventes par catégorie",
-                            "📦",
-                            dcc.Graph(
-                                id="category-sales-chart",
-                                config={"displayModeBar": False},
-                                style={"height": "280px"},
-                            ),
-                            width=6,
-                        ),
-                        section_card(
-                            "Activité horaire",
-                            "⏱",
-                            dcc.Graph(
-                                id="hourly-analysis-chart",
-                                config={"displayModeBar": False},
-                                style={"height": "280px"},
-                            ),
-                            width=6,
-                        ),
-                    ],
-                    className="mb-3",
-                ),
-                # ── ANALYSES COMBINÉES ──────────────────────────
-                dbc.Row(
-                    [
-                        section_card(
-                            "Analyses",
-                            "📊",
+                        # ── CONTENU PRINCIPAL ────────────────────────────────
+                        dbc.Col(
                             [
-                                html.H5("Top Catégories", className="mb-3", style={"color": LECLERC_BLUE}),
-                                html.Div(id="top-categories-table"),
-                                html.Hr(className="my-4", style={"borderColor": "#e8ecf0"}),
-                                html.H5("Analyse par Ville", className="mb-3", style={"color": LECLERC_BLUE}),
-                                html.Div(id="cities-analysis-table"),
+                                # ── KPI CARDS ────────────────────────────────
+                                html.Div(id="kpi-cards", className="kpi-card-wrapper mb-3"),
+                                # ── GRAPHIQUES LIGNE 1 ────────────────────────
+                                dbc.Row(
+                                    [
+                                        section_card(
+                                            "Évolution des ventes",
+                                            "📈",
+                                            dcc.Graph(
+                                                id="sales-trend-chart",
+                                                config={"displayModeBar": False},
+                                                style={"height": "320px"},
+                                            ),
+                                            width=12,
+                                        ),
+                                    ],
+                                    className="mb-3",
+                                ),
+                                # ── GRAPHIQUES LIGNE 2 ────────────────────────
+                                dbc.Row(
+                                    [
+                                        section_card(
+                                            "Modes de paiement",
+                                            "💳",
+                                            dcc.Graph(
+                                                id="payment-pie-chart",
+                                                config={"displayModeBar": False},
+                                                style={"height": "280px"},
+                                            ),
+                                            width=6,
+                                        ),
+                                        section_card(
+                                            "Ventes par catégorie",
+                                            "📦",
+                                            dcc.Graph(
+                                                id="category-sales-chart",
+                                                config={"displayModeBar": False},
+                                                style={"height": "280px"},
+                                            ),
+                                            width=6,
+                                        ),
+                                    ],
+                                    className="mb-3",
+                                ),
+                                # ── GRAPHIQUES LIGNE 3 ────────────────────────
+                                dbc.Row(
+                                    [
+                                        section_card(
+                                            "Activité horaire",
+                                            "⏱",
+                                            dcc.Graph(
+                                                id="hourly-analysis-chart",
+                                                config={"displayModeBar": False},
+                                                style={"height": "280px"},
+                                            ),
+                                            width=12,
+                                        ),
+                                    ],
+                                    className="mb-3",
+                                ),
+                                # ── ANALYSES COMBINÉES ──────────────────────────
+                                dbc.Row(
+                                    [
+                                        section_card(
+                                            "Analyses",
+                                            "📊",
+                                            [
+                                                html.H5("Top Catégories", className="mb-3", style={"color": LECLERC_BLUE}),
+                                                html.Div(id="top-categories-table"),
+                                                html.Hr(style={"margin": "25px 0", "borderColor": "#e8ecf0"}),
+                                                html.H5("Analyse par Ville", className="mb-3", style={"color": LECLERC_BLUE}),
+                                                html.Div(id="cities-analysis-table"),
+                                            ],
+                                            width=12,
+                                        )
+                                    ],
+                                    className="mb-3",
+                                ),
+                                # ── RÉSUMÉ ────────────────────────────────────
+                                dbc.Row(
+                                    [
+                                        section_card(
+                                            "Résumé des données",
+                                            "📋",
+                                            html.Div(id="data-summary"),
+                                            width=12,
+                                        )
+                                    ],
+                                    className="mb-4",
+                                ),
                             ],
-                            width=12,
-                        )
+                            width=9,
+                        ),
                     ],
-                    className="mb-3",
-                ),
-                # ── RÉSUMÉ ────────────────────────────────────
-                dbc.Row(
-                    [
-                        section_card(
-                            "Résumé des données",
-                            "📋",
-                            html.Div(id="data-summary"),
-                            width=12,
-                        )
-                    ],
-                    className="mb-4",
+                    className="dashboard-main-row",
                 ),
                 # ── FOOTER ────────────────────────────────────
                 html.Div(
@@ -548,14 +681,29 @@ app.layout = html.Div(
                 ),
             ],
             fluid=False,
-            style={"maxWidth": "1200px"},
+            style={"maxWidth": "1400px"},  # Augmenté pour accommoder la sidebar
         ),
         # ── CSS PERSONNALISÉ ───────────────────────────────
+        html.Link(rel="stylesheet", href="/assets/custom.css"),
         html.Link(rel="stylesheet", href="/assets/custom_toggles.css"),
         html.Link(rel="stylesheet", href="/assets/filters_flexbox.css"),
     ],
     style={"fontFamily": "'DM Sans', Arial, sans-serif", "backgroundColor": "#f7f9fb", "minHeight": "100vh"},
 )
+
+
+# ─────────────────────────────────────────────
+# Callback pour afficher/masquer le sélecteur de date
+@callback(
+    Output("day-picker-container", "style"),
+    Input("period-dropdown", "value"),
+)
+def toggle_day_picker(period):
+    """Affiche le sélecteur de date uniquement quand 'Jour' est sélectionné."""
+    if period == "day":
+        return {"display": "block", "marginBottom": "20px"}
+    else:
+        return {"display": "none", "marginBottom": "20px"}
 
 
 # ─────────────────────────────────────────────
@@ -574,12 +722,13 @@ app.layout = html.Div(
     ],
     [
         Input("period-dropdown", "value"),
-        Input("category-dropdown", "value"),
-        Input("payment-dropdown", "value"),
+        Input("day-picker", "date"),
+        Input("category-checklist", "value"),
+        Input("payment-checklist", "value"),
         Input("city-checklist", "value"),
     ],
 )
-def update_dashboard(period, category, payment, selected_cities):
+def update_dashboard(period, selected_day, selected_categories, selected_payments, selected_cities):
     """Met à jour tous les composants du dashboard selon les filtres actifs."""
 
     # ── Données vides ──
@@ -597,10 +746,25 @@ def update_dashboard(period, category, payment, selected_cities):
 
     # ── Filtrage ──
     filtered_df = df_clean.copy()
-    if category != "all" and "Product line" in filtered_df.columns:
-        filtered_df = filtered_df[filtered_df["Product line"] == category]
-    if payment != "all" and "Payment" in filtered_df.columns:
-        filtered_df = filtered_df[filtered_df["Payment"] == payment]
+
+    # Appliquer le filtre de période en premier
+    if period == "day" and selected_day:
+        # Filtrer pour le jour spécifique sélectionné
+        filtered_df = filter_by_period(filtered_df, "day", specific_date=selected_day)
+    else:
+        # Utiliser les périodes prédéfinies
+        filtered_df = filter_by_period(filtered_df, period)
+
+    # Appliquer les autres filtres
+    # Filtrage par catégories sélectionnées
+    if selected_categories and "Product line" in filtered_df.columns:
+        filtered_df = filtered_df[filtered_df["Product line"].isin(selected_categories)]
+    # Si aucune catégorie sélectionnée, on garde toutes les catégories
+
+    # Filtrage par modes de paiement sélectionnés
+    if selected_payments and "Payment" in filtered_df.columns:
+        filtered_df = filtered_df[filtered_df["Payment"].isin(selected_payments)]
+    # Si aucun paiement sélectionné, on garde tous les paiements
 
     # Filtrage par villes sélectionnées
     if selected_cities:
@@ -629,11 +793,31 @@ def update_dashboard(period, category, payment, selected_cities):
 
     # ── Graphique ventes ──
     try:
-        # Convertir les valeurs de période pour la fonction sales_over_time
-        period_mapping = {"all": "daily", "today": "daily", "week": "weekly", "month": "monthly"}
-        mapped_period = period_mapping.get(period, "daily")
+        import logging
 
+        logging.basicConfig(level=logging.INFO)
+        logger = logging.getLogger(__name__)
+
+        logger.info("=== GRAPHIQUE VENTES DEBUG ===")
+        logger.info(f"Période sélectionnée: {period}")
+        logger.info(f"Jour sélectionné: {selected_day}")
+        logger.info(f"DataFrame filtré shape: {filtered_df.shape}")
+
+        # Convertir les valeurs de période pour la fonction sales_over_time
+        period_mapping = {
+            "all": "daily",
+            "day": "hourly",  # Horaire pour un jour spécifique
+            "week": "daily",  # Journalier pour la semaine pour voir l'évolution jour par jour
+            "month": "daily",  # Journalier pour le mois pour voir l'évolution jour par jour
+        }
+        mapped_period = period_mapping.get(period, "daily")
+        logger.info(f"Période mappée: {mapped_period}")
+
+        logger.info("🚀 Appel de sales_over_time...")
         time_data = sales_over_time(filtered_df, period=mapped_period)
+        logger.info(f"✅ sales_over_time retourné, shape: {time_data.shape}")
+        logger.info(f"Colonnes retournées: {time_data.columns.tolist()}")
+
         sales_fig = go.Figure()
         # Zone remplie sous la courbe
         sales_fig.add_trace(
@@ -648,21 +832,40 @@ def update_dashboard(period, category, payment, selected_cities):
                 fillcolor="rgba(4,113,182,0.08)",
             )
         )
+
+        # Formatage conditionnel de l'axe X selon la période
+        if mapped_period == "hourly":
+            xaxis_config = {
+                "gridcolor": "#f0f0f0",
+                "linecolor": "#e0e0e0",
+                "tickfont": {"size": 11},
+                "tickformat": "%H:%M",  # Format heures:minutes
+                "title": "Heures de la journée",
+            }
+        else:
+            xaxis_config = {"gridcolor": "#f0f0f0", "linecolor": "#e0e0e0", "tickfont": {"size": 11}, "title": None}
+
         sales_fig.update_layout(
             paper_bgcolor="white",
             plot_bgcolor="white",
             font={"family": "DM Sans, Arial, sans-serif", "size": 12, "color": "#444"},
             margin={"t": 20, "b": 30, "l": 55, "r": 20},
-            xaxis={"gridcolor": "#f0f0f0", "linecolor": "#e0e0e0", "tickfont": {"size": 11}},
+            xaxis=xaxis_config,
             yaxis={"gridcolor": "#f0f0f0", "linecolor": "#e0e0e0", "tickfont": {"size": 11}},
-            xaxis_title=None,
             yaxis_title="Ventes (€)",
             hovermode="x unified",
             showlegend=True,
             legend={"bgcolor": "rgba(255,255,255,0)", "bordercolor": "rgba(0,0,0,0)", "font": {"size": 11}},
         )
+        logger.info("✅ Graphique ventes créé avec succès")
+
     except Exception as e:
-        sales_fig = empty_figure(f"Erreur: {e}")
+        import traceback
+
+        error_msg = f"Erreur graphique ventes: {type(e).__name__}: {e}"
+        logger.error(f"❌ {error_msg}")
+        logger.error(f"❌ Traceback complet:\n{traceback.format_exc()}")
+        sales_fig = empty_figure(error_msg)
 
     # ── Graphique paiements ──
     try:
