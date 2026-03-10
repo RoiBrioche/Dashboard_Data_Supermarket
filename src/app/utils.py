@@ -243,6 +243,74 @@ def create_date_features(df: pd.DataFrame, date_col: str = "Date") -> pd.DataFra
     return df_result
 
 
+def filter_by_period(df: pd.DataFrame, period: str, specific_date: str = None, date_col: str = "Date") -> pd.DataFrame:
+    """
+    Filtre un DataFrame par période temporelle relative au dataset
+
+    Args:
+        df: DataFrame à filtrer
+        period: Période ('all', 'day', 'week', 'month')
+        specific_date: Date spécifique au format YYYY-MM-DD si period='day'
+        date_col: Nom de la colonne de date
+
+    Returns:
+        DataFrame filtré par période
+    """
+    if period == "all" or date_col not in df.columns:
+        logger.info(f"Période: {period} - Pas de filtrage")
+        return df.copy()
+
+    df_filtered = df.copy()
+
+    # S'assurer que la colonne est en datetime
+    if not pd.api.types.is_datetime64_any_dtype(df_filtered[date_col]):
+        df_filtered[date_col] = pd.to_datetime(df_filtered[date_col])
+
+    # Utiliser la date la plus récente du dataset comme référence
+    max_date = df_filtered[date_col].max()
+    min_date = df_filtered[date_col].min()
+    logger.info(f"Dataset dates: {min_date} à {max_date}")
+
+    # Pour la démo, on considère "aujourd'hui" comme la date la plus récente du dataset
+    reference_today = max_date.normalize()
+    logger.info(f"Date de référence utilisée: {reference_today}")
+
+    if period == "day" and specific_date:
+        # Jour spécifique sélectionné
+        try:
+            target_date = pd.to_datetime(specific_date).normalize()
+            mask = df_filtered[date_col].dt.date == target_date.date()
+            df_filtered = df_filtered[mask]
+            logger.info(f"Filtrage jour spécifique {target_date.date()} - {len(df_filtered)} lignes trouvées")
+        except Exception as e:
+            logger.error(f"Erreur de conversion de date {specific_date}: {e}")
+            return df.copy()  # Retourner le DataFrame original en cas d'erreur
+
+    elif period == "today":
+        # Dernier jour du dataset
+        mask = df_filtered[date_col].dt.date == reference_today.date()
+        df_filtered = df_filtered[mask]
+        logger.info(f"Filtrage période aujourd'hui (dernier jour) - {len(df_filtered)} lignes trouvées")
+
+    elif period == "week":
+        # 7 derniers jours du dataset
+        week_start = reference_today - pd.Timedelta(days=7)
+        logger.info(f"Début de semaine (7 derniers jours): {week_start}")
+        mask = df_filtered[date_col] >= week_start
+        df_filtered = df_filtered[mask]
+        logger.info(f"Filtrage période cette semaine (7 derniers jours) - {len(df_filtered)} lignes trouvées")
+
+    elif period == "month":
+        # 30 derniers jours du dataset
+        month_start = reference_today - pd.Timedelta(days=30)
+        logger.info(f"Début du mois (30 derniers jours): {month_start}")
+        mask = df_filtered[date_col] >= month_start
+        df_filtered = df_filtered[mask]
+        logger.info(f"Filtrage période ce mois (30 derniers jours) - {len(df_filtered)} lignes trouvées")
+
+    return df_filtered
+
+
 def detect_outliers(df: pd.DataFrame, column: str, method: str = "iqr") -> pd.DataFrame:
     """
     Détecte les valeurs aberrantes dans une colonne
