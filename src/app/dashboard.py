@@ -996,4 +996,8 @@ def update_dashboard(period, category, payment, selected_cities):
 # ENTRYPOINT
 # ─────────────────────────────────────────────
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=8050)  # nosec B104
+    import os
+
+    port = int(os.environ.get("PORT", 8050))
+    debug = os.environ.get("ENVIRONMENT") != "production"
+    app.run(debug=debug, host="0.0.0.0", port=port)  # nosec B104
